@@ -7,8 +7,11 @@ units = {}
 
 def handle_client(sock, addr):
     """Handle incoming client messages."""
+
+    buffered = sock.makefile("r", encoding="utf-8", newline="\n") #buffered reader for line-based reading /had to add this for device to server communication / Mi 
+
     while True:
-        msg = recv_json_line(sock)
+        msg = recv_json_line(buffered)  #replaced sock with buffered
         if msg is None:
             print(f"Connection closed by {addr}")
             break
