@@ -7,7 +7,7 @@ from protocol import send_json, recv_json_line
 
 # Configuration
 DEFAULT_HOST = "127.0.0.1"
-DEFAULT_PORT = 9000
+DEFAULT_PORT = 5001
 UNIT_ID = "unit-1"
 
 # State
@@ -24,7 +24,7 @@ def handle_message(msg):
     msg_type = msg.get("type")
     payload = msg.get("payload", {})
     
-    print(f"RECV: {msg_type}", end="")
+    print(f"\nRECV: {msg_type}", flush=True)
     
     if msg_type == "device_list":
         devices = payload.get("devices", [])
@@ -34,12 +34,18 @@ def handle_message(msg):
             print(f"  [{i}] {dev.get('deviceId')} ({dev.get('deviceType')})")
         print()
     
+    
     elif msg_type == "ui_definition":
         device_id = payload.get("deviceId")
         ui_items = payload.get("ui", [])
+        state = payload.get("state")
+        if state:
+            latest_state.update(state)
+            print(f"Current state: {latest_state}")
         print(f" - deviceId={device_id}, {len(ui_items)} UI items")
         print(f"\nUI for device: {device_id}")
         render_ui()
+    
     
     elif msg_type == "state_update":
         device_id = payload.get("deviceId")
@@ -53,6 +59,7 @@ def handle_message(msg):
     
     else:
         print(f" - {payload}")
+    print("\n> ", end="", flush=True)
 
 
 def render_ui():
@@ -99,7 +106,7 @@ def run_interactive(host, port):
         # Send login
         login_msg = {
             "type": "login",
-            "senderId": UNIT_ID,
+            "sender_id": UNIT_ID,
             "payload": {"username": "user", "password": "1234"}
         }
         print(f"SEND: login")
@@ -108,7 +115,7 @@ def run_interactive(host, port):
         # Send get_devices
         get_devices_msg = {
             "type": "get_devices",
-            "senderId": UNIT_ID,
+            "sender_id": UNIT_ID,
             "payload": {}
         }
         print(f"SEND: get_devices")
@@ -117,7 +124,7 @@ def run_interactive(host, port):
         # Main interaction loop
         while True:
             try:
-                user_input = input("> ").strip()
+                user_input = input("").strip()
                 
                 if user_input.lower() == "q":
                     print("Quitting...")
@@ -131,7 +138,7 @@ def run_interactive(host, port):
                     latest_state = {}
                     get_devices_msg = {
                         "type": "get_devices",
-                        "senderId": UNIT_ID,
+                        "sender_id": UNIT_ID,
                         "payload": {}
                     }
                     print(f"SEND: get_devices")
@@ -147,7 +154,7 @@ def run_interactive(host, port):
                             latest_state = {}
                             get_ui_msg = {
                                 "type": "get_ui",
-                                "senderId": UNIT_ID,
+                                "sender_id": UNIT_ID,
                                 "payload": {"deviceId": selected_device_id}
                             }
                             print(f"SEND: get_ui - deviceId={selected_device_id}")
@@ -163,7 +170,7 @@ def run_interactive(host, port):
                                 action = item.get("action")
                                 action_msg = {
                                     "type": "action",
-                                    "senderId": UNIT_ID,
+                                    "sender_id": UNIT_ID,
                                     "payload": {
                                         "deviceId": selected_device_id,
                                         "action": action

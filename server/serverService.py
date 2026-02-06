@@ -1,24 +1,47 @@
 """Module for handling client connections and messages in the server."""
-
 from protocol import recv_json_line, send_json
 devices = {}
 units = {}
 
 
 def handle_client(sock, addr):
-    """Handle incoming client messages."""
+    buffered = sock.makefile("r", encoding="utf-8", newline="\n")
+    client_id = None
 
-    buffered = sock.makefile("r", encoding="utf-8", newline="\n") #buffered reader for line-based reading /had to add this for device to server communication / Mi 
+    try:
+        while True:
+            try:
+                msg = recv_json_line(buffered)
+                if msg is None:
+                    print(f"Connection closed by {addr}")
+                    break
+                client_id = handle_message(sock, msg, client_id)
 
-    while True:
-        msg = recv_json_line(buffered)  #replaced sock with buffered
-        if msg is None:
-            print(f"Connection closed by {addr}")
-            break
-        handle_message(sock, msg)
+            except (ConnectionResetError, BrokenPipeError, OSError) as e:
+                print(f"Client {addr} disconnected ({e})")
+                break
+
+    finally:
+        if client_id:
+            if client_id in units:
+                print(f"Removing unit {client_id}")
+                units.pop(client_id, None)
+            if client_id in devices:
+                print(f"Removing device {client_id}")
+                devices.pop(client_id, None)
+
+        try:
+            buffered.close()
+        except Exception:
+            pass
+        try:
+            sock.close()
+        except Exception:
+            pass
 
 
-def handle_message(sock, msg):
+
+def handle_message(sock, msg, client_id):
     """Handle incoming messages from clients."""
     msg_type = msg["type"]
     sender_id = msg["sender_id"]
@@ -37,6 +60,8 @@ def handle_message(sock, msg):
         handle_action(sender_id, payload)
     elif msg_type == "login":
         handle_login(sock, sender_id, payload)
+
+    return sender_id or client_id
 
 
 def handle_register_device(sock, sender_id, payload):
@@ -64,11 +89,11 @@ def handle_device_state(device_id, payload):
     devices[device_id]["state"] = payload["state"]
     for unit_sock in units.values():
         send_json(unit_sock, {
-            "type": "device_state_update",
+            "type": "state_update",
             "sender_id": "server",
             "payload": {
                 "deviceId": device_id,
-                "state": payload
+                "state": payload["state"]
             }
         })
 
@@ -76,7 +101,7 @@ def handle_device_state(device_id, payload):
 def handle_get_devices(sockt):
     """Send a list of registered devices to the client."""
     device_list = [
-        {"deviceId": dev_id, "deviceType": device["type"]}
+        {"deviceId": dev_id, "deviceType": device["info"].get("deviceType")}
         for dev_id, device in devices.items()
     ]
     send_json(sockt, {
@@ -89,14 +114,24 @@ def handle_get_devices(sockt):
 
 
 def handle_get_ui(sock, unit_id, payload):
-    """Send the UI definition for a specified device to the client."""
     device_id = payload["deviceId"]
+    device = devices.get(device_id)
+
+    if not device:
+        send_json(sock, {
+            "type": "error",
+            "sender_id": "server",
+            "payload": {"message": f"Unknown deviceId {device_id}"}
+        })
+        return
+
     send_json(sock, {
         "type": "ui_definition",
         "sender_id": "server",
         "payload": {
             "deviceId": device_id,
-            "ui": devices[device_id]["ui"]
+            "ui": device.get("ui") or [],
+            "state": device.get("state") or {}
         }
     })
 

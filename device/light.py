@@ -1,4 +1,4 @@
-import socket
+import socket, time
 from protocol import send_json, recv_json_line
 
 SERVER_HOST = "localhost"
@@ -87,11 +87,22 @@ def handle_action(sock, msg, light_on: bool) -> bool:
     send_state(sock, light_on)
     return light_on
 
+def connect_with_retry(host, port, retry_seconds=2):
+    while True:
+        try:
+            sock = socket.socket()
+            sock.connect((host, port))
+            return sock
+        except ConnectionRefusedError:
+            print(f"Server not up yet at {host}:{port}. Retrying in {retry_seconds}s...")
+            time.sleep(retry_seconds)
+        except OSError as e:
+            print(f"Connect failed ({e}). Retrying in {retry_seconds}s...")
+            time.sleep(retry_seconds)
 
 def main():
     # 1) Connect to the server
-    sock = socket.socket()
-    sock.connect((SERVER_HOST, SERVER_PORT))
+    sock = connect_with_retry(SERVER_HOST, SERVER_PORT)
     print(f"Connected to server at {SERVER_HOST}:{SERVER_PORT}")
 
     # Create a buffered reader for line-based JSON messages
