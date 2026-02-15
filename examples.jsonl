@@ -1,0 +1,7 @@
+{"type":"login","sender_id":"unit-1","payload":{"username":"user","password":"1234"}}
+{"type":"get_devices","sender_id":"unit-1","payload":{}}
+{"type":"device_list","sender_id":"server","payload":{"devices":[{"deviceId":"light-1","deviceType":"light"}]}}
+{"type":"get_ui","sender_id":"unit-1","payload":{"deviceId":"light-1"}}
+{"type":"ui_definition","sender_id":"server","payload":{"deviceId":"light-1","ui":[{"type":"button","action":"ON","label":"Turn ON"}],"state":{"lightOn":false}}}
+{"type":"action","sender_id":"unit-1","payload":{"deviceId":"light-1","action":"ON"}}
+{"type":"state_update","sender_id":"server","payload":{"deviceId":"light-1","state":{"lightOn":true}}}

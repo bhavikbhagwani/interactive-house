@@ -43,4 +43,33 @@ Focus:
 
 ### Iteration 2 – Overview
 
+Goal: scale the working end-to-end architecture from Iteration 1 by adding persistence, more devices, and real clients.
+
+Scope:
+
+- Server upgraded with SQLite persistence (devices, UI definitions, last known state, seeded users)
+
+- Multiple simulated devices
+
+- Android unit client (Kotlin) replacing the Python CLI as the primary unit
+
+- Web-based unit client
+
+Focus:
+
+- Persistence across server restarts (server reloads devices/UI/state from SQLite on startup)
+
+- Same NDJSON message protocol across Android and Web
+
+- Device-provided UI rendered dynamically across platforms
+
+Not in scope yet:
+
+- Role-based access control (RBAC) / permissions (planned for Iteration 3)
+
+- Advanced security (encryption, password hashing, signup/account management)
+
+
+### Iteration 3 – Overview
+
 To be defined later

@@ -1,0 +1,14 @@
+# --- Database ---
+*.db
+
+# --- Android ---
+**/.gradle/
+**/.idea/
+**/build/
+**/*.iml
+local.properties
+
+# --- Node / Web ---
+**/node_modules/
+dist/
+.env
