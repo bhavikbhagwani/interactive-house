@@ -35,14 +35,14 @@ def send_register_device(sock):
 def send_ui_definition(sock):
     """
     Send the UI definition to the server.
-    The device defines which controls it supports (ON / OFF buttons).
+    The device defines which controls it supports (MAKE / STOP buttons).
     The unit will later render this UI.
     """
     ui = [
-        {"type": "button", "action": "ON", "label": "Turn ON"},
-        {"type": "button", "action": "OFF", "label": "Turn OFF"},
+        {"type": "button", "action": "MAKE", "label": "Turn ON"},
+        # {"type": "button", "action": "STOP", "label": "Turn OFF"}
     ]
-
+ 
     msg = {
         "type": "ui_definition",
         "sender_id": DEVICE_ID,
@@ -54,28 +54,27 @@ def send_ui_definition(sock):
     send_json(sock, msg)
 
 
-def send_state(sock, light_on: bool):
+def send_state(sock, is_making: bool):
     """
     Send the current state of the device to the server.
-    For the light device, the state is whether the light is on or off.
+    For the coffee machine device, the state is whether the coffee machine is making or not.
     """
     msg = {
         "type": "device_state",
         "sender_id": DEVICE_ID,
         "payload": {
             "state": {          
-                "lightOn": light_on
+                "isMaking": is_making
             }
         }
     }
     print("SEND: device_state", msg)
     send_json(sock, msg)
 
-
-def handle_action(sock, msg, light_on: bool) -> bool:
+def handle_action(sock, msg, is_making: bool) -> bool:
     """
     Handle an action received from the server.
-    Updates the internal state based on the action (ON / OFF)
+    Updates the internal state based on the action (MAKE)
     and sends the updated state back to the server.
     """
     payload = msg.get("payload", {})
@@ -83,17 +82,26 @@ def handle_action(sock, msg, light_on: bool) -> bool:
 
     print("RECV: action", action)
 
-    if action == "ON":
-        light_on = True
-    elif action == "OFF":
-        light_on = False
-    else:
-        print("Unknown action:", action)
-        return light_on
+    if action == "MAKE":
+        if is_making == True:
+            #send_state(sock, is_making)
+            return is_making
+        else:
+            is_making = True
+            send_state(sock, is_making)
+            print("Brewing coffee...")
+            # delay 30 sec
+            # time.sleep(30)
+            for a in range(30):
+                time.sleep(1)
+                print(a + 1)
+            is_making = False
+            send_state(sock, is_making)
+            print("Coffee is done.")
+            return is_making
 
-    # Send updated state back to the server
-    send_state(sock, light_on)
-    return light_on
+    print("Unknown action: ", action)
+    return is_making
 
 def connect_with_retry(host, port, retry_seconds=2):
     while True:
@@ -122,9 +130,9 @@ def main():
     # 3) Send UI definition (buttons)
     send_ui_definition(sock)
 
-    # 4) Send initial state (light is off)
-    light_on = False
-    send_state(sock, light_on)
+    # 4) Send initial state (coffee machine is done)
+    is_making = False
+    send_state(sock, is_making)
 
     # 5) Main loop: wait for actions from the server
     try:
@@ -138,7 +146,7 @@ def main():
             print("RECV:", msg_type, msg)
 
             if msg_type == "action":
-                light_on = handle_action(sock, msg, light_on)
+                is_making = handle_action(sock, msg, is_making)
             else:
                 # For iteration 1, the device only reacts to "action" messages
                 print("Ignoring message type:", msg_type)
