@@ -1,5 +1,6 @@
 import socket, time
 from protocol import send_json, recv_json_line
+import threading
 #	Coffee machine
 #o	State: { isMaking: true/false }
 #o	UI: Make button
@@ -15,6 +16,26 @@ SERVER_PORT = 5001
 
 # Unique identifier for this device
 DEVICE_ID = "coffee-machine-1"
+
+# Thread for making coffee
+is_making = False
+state_lock = threading.Lock()
+
+def brew_coffee(sock):
+    global is_making
+    print("Making coffee...")
+
+    for a in range(30):
+        time.sleep(1)
+        print(a + 1)
+    
+    with state_lock:
+        is_making = False
+        send_state(sock, is_making)
+        send_ui_definition(sock, is_making)
+    
+    print("Coffee is done!")
+
 
 def send_register_device(sock):
     """
@@ -75,43 +96,37 @@ def send_state(sock, is_making: bool):
     print("SEND: device_state", msg)
     send_json(sock, msg)
 
-def handle_action(sock, msg, is_making: bool) -> bool:
+def handle_action(sock, msg):
     """
     Handle an action received from the server.
     Updates the internal state based on the action (MAKE)
     and sends the updated state back to the server.
     """
+    global is_making
+
     payload = msg.get("payload", {})
     action = payload.get("action")
 
     print("RECV: action", action)
 
     if action != "MAKE":
-        print("Unknown action: ", action)
-        return is_making
-    
-    if is_making:
+        print("Unknown action:", action)
+        return
+
+    with state_lock:
+        if is_making:
+            # Already brewing: re-send current state + UI so units stay in sync
+            send_state(sock, is_making)
+            send_ui_definition(sock, is_making)
+            return
+
+        # Start brewing (inside lock so no double-start)
+        is_making = True
         send_state(sock, is_making)
         send_ui_definition(sock, is_making)
-        return is_making
-    
-    # Make coffee
-    is_making = True
-    send_state(sock, is_making)
-    send_ui_definition(sock, is_making)
 
-    print("Brewing coffee...")
-    for a in range(30):
-        time.sleep(1)
-        print(a + 1)
-
-    # Coffee is done
-    is_making = False
-    send_state(sock, is_making)
-    send_ui_definition(sock, is_making)
-
-    print("Coffee is done.")
-    return is_making
+    # Run brewing in background so we don't block receiving new messages
+    threading.Thread(target=brew_coffee, args=(sock,), daemon=True).start()
 
 def connect_with_retry(host, port, retry_seconds=2):
     while True:
@@ -156,7 +171,7 @@ def main():
             print("RECV:", msg_type, msg)
 
             if msg_type == "action":
-                is_making = handle_action(sock, msg, is_making)
+                handle_action(sock, msg)
             else:
                 # For iteration 1, the device only reacts to "action" messages
                 print("Ignoring message type:", msg_type)
