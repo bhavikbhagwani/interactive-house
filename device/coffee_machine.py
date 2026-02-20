@@ -32,15 +32,19 @@ def send_register_device(sock):
     send_json(sock, msg)
 
 
-def send_ui_definition(sock):
+def send_ui_definition(sock, is_making: bool):
     """
     Send the UI definition to the server.
     The device defines which controls it supports (MAKE / STOP buttons).
     The unit will later render this UI.
     """
     ui = [
-        {"type": "button", "action": "MAKE", "label": "Turn ON"},
-        # {"type": "button", "action": "STOP", "label": "Turn OFF"}
+        {
+        "type": "button",
+        "action": "MAKE",
+        "label": "Make coffee",
+        "enabled": (not is_making)
+    }
     ]
  
     msg = {
@@ -82,25 +86,31 @@ def handle_action(sock, msg, is_making: bool) -> bool:
 
     print("RECV: action", action)
 
-    if action == "MAKE":
-        if is_making == True:
-            #send_state(sock, is_making)
-            return is_making
-        else:
-            is_making = True
-            send_state(sock, is_making)
-            print("Brewing coffee...")
-            # delay 30 sec
-            # time.sleep(30)
-            for a in range(30):
-                time.sleep(1)
-                print(a + 1)
-            is_making = False
-            send_state(sock, is_making)
-            print("Coffee is done.")
-            return is_making
+    if action != "MAKE":
+        print("Unknown action: ", action)
+        return is_making
+    
+    if is_making:
+        send_state(sock, is_making)
+        send_ui_definition(sock, is_making)
+        return is_making
+    
+    # Make coffee
+    is_making = True
+    send_state(sock, is_making)
+    send_ui_definition(sock, is_making)
 
-    print("Unknown action: ", action)
+    print("Brewing coffee...")
+    for a in range(30):
+        time.sleep(1)
+        print(a + 1)
+
+    # Coffee is done
+    is_making = False
+    send_state(sock, is_making)
+    send_ui_definition(sock, is_making)
+
+    print("Coffee is done.")
     return is_making
 
 def connect_with_retry(host, port, retry_seconds=2):
@@ -128,7 +138,7 @@ def main():
     send_register_device(sock)
 
     # 3) Send UI definition (buttons)
-    send_ui_definition(sock)
+    send_ui_definition(sock, is_making=False)
 
     # 4) Send initial state (coffee machine is done)
     is_making = False

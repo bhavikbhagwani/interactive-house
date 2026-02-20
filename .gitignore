@@ -12,3 +12,7 @@ local.properties
 **/node_modules/
 dist/
 .env
+
+# --- Cache ---
+__pycache__/
+*.pyc
