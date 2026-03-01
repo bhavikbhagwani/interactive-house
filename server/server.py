@@ -2,8 +2,11 @@
 import socket
 import threading
 from serverService import handle_client
+from db_init import initialize_db
+
 
 PORT = 5001
+
 def main():
     """Start the server and listen for incoming client connections."""
     server_sock = socket.socket()
@@ -11,7 +14,7 @@ def main():
     server_sock.listen()
 
     print(f"Server running on localhost:{PORT}")
-
+    initialize_db()
     while True:
         client_sock, addr = server_sock.accept()
         thread = threading.Thread(

@@ -1,9 +1,22 @@
+
 """Module for handling client connections and messages in the server."""
+
+# =========================================================
+# IMPORTS
+# =========================================================
 from protocol import recv_json_line, send_json
+from db_service import *
+
+# =========================================================
+# GLOBAL SERVER STATE (In-Memory)
+# =========================================================
 devices = {}
 units = {}
 
 
+# =========================================================
+# CLIENT CONNECTION HANDLING
+# =========================================================
 def handle_client(sock, addr):
     buffered = sock.makefile("r", encoding="utf-8", newline="\n")
     client_id = None
@@ -15,7 +28,7 @@ def handle_client(sock, addr):
                 if msg is None:
                     print(f"Connection closed by {addr}")
                     break
-                client_id = handle_message(sock, msg, client_id)
+                client_id = handle_message(sock, msg, client_id)  #handle msg func. call
 
             except (ConnectionResetError, BrokenPipeError, OSError) as e:
                 print(f"Client {addr} disconnected ({e})")
@@ -40,6 +53,9 @@ def handle_client(sock, addr):
             pass
 
 
+# =========================================================
+# MESSAGE ROUTER
+# =========================================================
 
 def handle_message(sock, msg, client_id):
     """Handle incoming messages from clients."""
@@ -59,10 +75,14 @@ def handle_message(sock, msg, client_id):
     elif msg_type == "action":
         handle_action(sender_id, payload)
     elif msg_type == "login":
-        handle_login(sock, sender_id, payload)
+        handle_login_for_gui(sock, sender_id, payload)
 
     return sender_id or client_id
 
+
+# =========================================================
+# DEVICE HANDLERS
+# =========================================================
 
 def handle_register_device(sock, sender_id, payload):
     """Register a new device with the given socket and information."""
@@ -72,38 +92,55 @@ def handle_register_device(sock, sender_id, payload):
         "ui": None,
         "state": None
     }
+
+    #DB : insert/update device
+    device_type = payload.get("deviceType", "unknown")  #unknown used to present python program crash
+    upsert_device(sender_id, device_type)
+    
     print(f"Registered device {sender_id} with info {payload}")
+
 
 
 def handle_ui_definition(sender_id, payload):
     """Handle the UI definition from a registered device."""
     if sender_id in devices:
-        devices[sender_id]["ui"] = payload["ui"]
+        ui = payload["ui"]
+        devices[sender_id]["ui"] = ui
+
+        # DB save uiDefinition in DB
+        save_ui_defination(sender_id, ui)
+
         print(f"Received UI definition from {sender_id}: {payload}")
     else:
         print(f"UI definition from unregistered device {sender_id}")
 
 
+# Device ➜ Server ➜ Units
 def handle_device_state(device_id, payload):
     """Update the state of a device and notify all units of the change."""
-    devices[device_id]["state"] = payload["state"]
+    state = payload["state"]
+    devices[device_id]["state"] = state
+
+    # DB Save device state in DB
+    save_device_state(device_id, state)
+
+    # notify units
     for unit_sock in units.values():
         send_json(unit_sock, {
             "type": "state_update",
             "sender_id": "server",
             "payload": {
                 "deviceId": device_id,
-                "state": payload["state"]
+                "state": state
             }
         })
 
 
 def handle_get_devices(sockt):
     """Send a list of registered devices to the client."""
-    device_list = [
-        {"deviceId": dev_id, "deviceType": device["info"].get("deviceType")}
-        for dev_id, device in devices.items()
-    ]
+    if not require_login(sockt):
+        return
+    device_list = fetch_devices_list()
     send_json(sockt, {
         "type": "device_list",
         "sender_id": "server",
@@ -113,18 +150,40 @@ def handle_get_devices(sockt):
     })
 
 
+# Server ➜ Unit
+# Sends UI + current state so unit can draw controls.
+# Unit asks for device UI
+#         ↓
+# Is device online?
+#         ↓
+#    YES → Send from memory
+#    NO  → Check database
+#             ↓
+#         Found? → Send from DB
+#         Not found? → Send error
 def handle_get_ui(sock, unit_id, payload):
+    if not require_login(sock):
+        return
     device_id = payload["deviceId"]
     device = devices.get(device_id)
 
     if not device:
-        send_json(sock, {
+        # fallback to DB (device might be offline but still stored)
+        ui, state = fetch_device_ui_and_state(device_id)
+        if ui == [] and state == {}:
+            send_json(sock, {
             "type": "error",
             "sender_id": "server",
             "payload": {"message": f"Unknown deviceId {device_id}"}
+            })
+            return
+        send_json(sock, {
+            "type": "ui_definition",
+            "sender_id": "server",
+            "payload": {"deviceId": device_id, "ui": ui, "state": state}
         })
         return
-
+    
     send_json(sock, {
         "type": "ui_definition",
         "sender_id": "server",
@@ -136,8 +195,12 @@ def handle_get_ui(sock, unit_id, payload):
     })
 
 
-def handle_action(unit_id, payload):
-    """Handle an action request from a unit for a specific device."""
+# Unit ➜ Server ➜ Device
+def handle_action(sock, unit_id, payload):
+    """Handle an action request from a unit for a specific device based on login status."""
+    if not require_login(sock):
+        return
+    
     device_id = payload["deviceId"]
     action = payload["action"]
     if device_id in devices:
@@ -150,6 +213,76 @@ def handle_action(unit_id, payload):
         })
 
 
+
+# =========================================================
+# AUTH HELPERS
+# =========================================================
+
 def handle_login(sock, unit_id, payload):
     """Handle the login request from a unit and associate it with a socket."""
     units[unit_id] = sock
+
+
+def is_logged_in(sock):
+    """To check if user is logged in, returns True or False 
+    based on store unit socket in units dict using userId as key"""
+    return sock in units.values()
+
+
+def require_login(sock):
+    """
+    Check login. If not logged in, send error and return False.
+    If logged in, return True.
+    """
+    if not is_logged_in(sock):
+        send_json(sock, {
+            "type": "error",
+            "sender_id": "server",
+            "payload": {"message": "Please login first"}
+        })
+        return False
+    return True
+
+
+def handle_login_for_gui(sock, unit_id, payload):
+    """
+    Unit login handler:
+    - checks credentials in DB
+    - if ok: store unit socket in units dict using userId as key
+    - replies with login_result
+    """
+    email = payload.get("email")
+    password = payload.get("password")
+
+    if not email or not password:
+        send_json(sock, {
+            "type": "login_result",
+            "sender_id": "server",
+            "payload": {"ok": False, "message": "Missing email or password"}
+        })
+        return
+
+    ok, user = verify_login(email, password)
+
+    if not ok:
+        send_json(sock, {
+            "type": "login_result",
+            "sender_id": "server",
+            "payload": {"ok": False, "message": "Invalid email or password"}
+        })
+        return
+
+    # Save this unit socket so server can push state updates to it
+    user_id = str(user["userId"])   # store as string to keep dict keys consistent
+    units[user_id] = sock
+
+    send_json(sock, {
+        "type": "login_result",
+        "sender_id": "server",
+        "payload": {
+            "ok": True,
+            "userId": user["userId"],
+            "role": user["role"],
+            "message": "Login successful"
+        }
+    })    
