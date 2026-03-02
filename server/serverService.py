@@ -152,4 +152,26 @@ def handle_action(unit_id, payload):
 
 def handle_login(sock, unit_id, payload):
     """Handle the login request from a unit and associate it with a socket."""
-    units[unit_id] = sock
+    username = payload.get("username")
+    password = payload.get("password")
+
+    # SIMPLE CREDENTIAL CHECK
+    if username == "user" and password == "1234":
+        units[unit_id] = sock
+
+        send_json(sock, {
+            "type": "login_ok",
+            "sender_id": "server",
+            "payload": {"success": True}
+        })
+
+        print(f"Login SUCCESS for {unit_id} (username={username})")
+
+    else:
+        send_json(sock, {
+            "type": "error",
+            "sender_id": "server",
+            "payload": {"message": "login_failed"}
+        })
+
+        print(f"Login FAILED for {unit_id} (username={username})")

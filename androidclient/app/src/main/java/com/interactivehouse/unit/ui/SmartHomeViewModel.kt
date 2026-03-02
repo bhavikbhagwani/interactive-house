@@ -5,9 +5,11 @@ import androidx.lifecycle.viewModelScope
 import com.interactivehouse.unit.data.models.Device
 import com.interactivehouse.unit.data.models.UiDefinition
 import com.interactivehouse.unit.data.repo.SmartHomeRepository
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 data class UiState(
     val isLoggedIn: Boolean = false,
@@ -31,7 +33,11 @@ class SmartHomeViewModel(private val repo: SmartHomeRepository) : ViewModel() {
     fun login(username: String, password: String) {
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true, loginError = null) }
-            val ok = repo.login(username, password)
+
+            val ok = withContext(Dispatchers.IO) {
+                repo.login(username, password)
+            }
+
             if (ok) {
                 _state.update { it.copy(isLoggedIn = true, isLoading = false) }
                 loadDevices()
@@ -44,16 +50,31 @@ class SmartHomeViewModel(private val repo: SmartHomeRepository) : ViewModel() {
     fun loadDevices() {
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true, error = null) }
-            runCatching { repo.getDevices() }
-                .onSuccess { devs -> _state.update { it.copy(isLoading = false, devices = devs) } }
-                .onFailure { e -> _state.update { it.copy(isLoading = false, error = e.message) } }
+
+            runCatching {
+                withContext(Dispatchers.IO) {
+                    repo.getDevices()
+                }
+            }
+                .onSuccess { devs ->
+                    _state.update { it.copy(isLoading = false, devices = devs) }
+                }
+                .onFailure { e ->
+                    _state.update { it.copy(isLoading = false, error = e.message) }
+                }
         }
     }
 
     fun selectDevice(device: Device) {
         viewModelScope.launch {
-            _state.update { it.copy(selectedDevice = device, uiDefinition = null, latestState = emptyMap()) }
-            val ui = repo.getUi(device.deviceId)
+            _state.update {
+                it.copy(selectedDevice = device, uiDefinition = null, latestState = emptyMap())
+            }
+
+            val ui = withContext(Dispatchers.IO) {
+                repo.getUi(device.deviceId)
+            }
+
             _state.update { it.copy(uiDefinition = ui) }
 
             updatesJob?.cancel()
@@ -72,14 +93,19 @@ class SmartHomeViewModel(private val repo: SmartHomeRepository) : ViewModel() {
 
     fun sendAction(action: String) {
         val deviceId = _state.value.selectedDevice?.deviceId ?: return
-        viewModelScope.launch {
+
+        viewModelScope.launch(Dispatchers.IO) {
             runCatching { repo.sendAction(deviceId, action) }
-                .onFailure { e -> _state.update { it.copy(error = e.message ?: "error") } }
+                .onFailure { e ->
+                    _state.update { it.copy(error = e.message ?: "error") }
+                }
         }
     }
 
     fun backToList() {
         updatesJob?.cancel()
-        _state.update { it.copy(selectedDevice = null, uiDefinition = null, latestState = emptyMap()) }
+        _state.update {
+            it.copy(selectedDevice = null, uiDefinition = null, latestState = emptyMap())
+        }
     }
 }

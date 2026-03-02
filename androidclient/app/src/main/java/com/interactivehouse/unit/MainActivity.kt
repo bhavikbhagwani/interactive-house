@@ -11,13 +11,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.ui.Modifier
 import com.interactivehouse.unit.data.repo.FakeSmartHomeRepository
+import com.interactivehouse.unit.data.repo.SocketSmartHomeRepository
 import com.interactivehouse.unit.ui.SmartHomeViewModel
 import com.interactivehouse.unit.ui.navigation.AppRoot
 import com.interactivehouse.unit.ui.theme.InteractiveHouseUnitTheme
 
 class MainActivity : ComponentActivity() {
 
-    private val vm by lazy { SmartHomeViewModel(FakeSmartHomeRepository()) }
+    private val vm by lazy { SmartHomeViewModel(SocketSmartHomeRepository()) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
