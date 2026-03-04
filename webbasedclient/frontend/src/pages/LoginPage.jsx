@@ -1,7 +1,7 @@
 import { useState } from "react";
 
 export default function LoginPage({ connected, statusMsg, onLogin }) {
-const [username, setUsername] = useState("");
+const [email, setEmail] = useState("");
 const [password, setPassword] = useState("");
 
 return (
@@ -12,9 +12,9 @@ return (
 
     <div>
         <input type="text" 
-        placeholder="Username" 
-        value={username}
-        onChange={(e) => setUsername(e.target.value)}
+        placeholder="Email" 
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
         />
     </div> 
 
@@ -26,7 +26,7 @@ return (
     </div>
 
     <div style={{ marginTop: 12 }}>
-        <button onClick={() => onLogin(username, password)}
+        <button onClick={() => onLogin(email, password)}
         disabled={!connected}
         >
 

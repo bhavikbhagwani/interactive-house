@@ -10,11 +10,12 @@ PORT = 5001
 def main():
     """Start the server and listen for incoming client connections."""
     server_sock = socket.socket()
-    server_sock.bind(("localhost", PORT))
+    server_sock.bind(("0.0.0.0", PORT))
     server_sock.listen()
 
-    print(f"Server running on localhost:{PORT}")
+    print(f"Server running on 0.0.0.0:{PORT}")
     initialize_db()
+    print("Demo login: email: user@email.com, password: user123")
     while True:
         client_sock, addr = server_sock.accept()
         thread = threading.Thread(

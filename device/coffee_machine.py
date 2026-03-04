@@ -53,7 +53,7 @@ def send_register_device(sock):
     send_json(sock, msg)
 
 
-def send_ui_definition(sock, is_making: bool):
+def send_ui_definition(sock, is_making):
     """
     Send the UI definition to the server.
     The device defines which controls it supports (MAKE / STOP buttons).
@@ -142,6 +142,7 @@ def connect_with_retry(host, port, retry_seconds=2):
             time.sleep(retry_seconds)
 
 def main():
+    global is_making
     # 1) Connect to the server
     sock = connect_with_retry(SERVER_HOST, SERVER_PORT)
     print(f"Connected to server at {SERVER_HOST}:{SERVER_PORT}")
@@ -152,11 +153,12 @@ def main():
     # 2) Register this device with the server
     send_register_device(sock)
 
+
+    is_making = False
     # 3) Send UI definition (buttons)
-    send_ui_definition(sock, is_making=False)
+    send_ui_definition(sock, is_making)
 
     # 4) Send initial state (coffee machine is done)
-    is_making = False
     send_state(sock, is_making)
 
     # 5) Main loop: wait for actions from the server
@@ -173,7 +175,6 @@ def main():
             if msg_type == "action":
                 handle_action(sock, msg)
             else:
-                # For iteration 1, the device only reacts to "action" messages
                 print("Ignoring message type:", msg_type)
 
     except KeyboardInterrupt:

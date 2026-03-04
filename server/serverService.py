@@ -12,6 +12,7 @@ from db_service import *
 # =========================================================
 devices = {}
 units = {}
+unit_sockets = {}
 
 
 # =========================================================
@@ -35,13 +36,16 @@ def handle_client(sock, addr):
                 break
 
     finally:
-        if client_id:
-            if client_id in units:
-                print(f"Removing unit {client_id}")
-                units.pop(client_id, None)
-            if client_id in devices:
-                print(f"Removing device {client_id}")
-                devices.pop(client_id, None)
+        # Remove unit by socket mapping (works even if client_id != user_id)
+        if sock in unit_sockets:
+            uid = unit_sockets.pop(sock)
+            print(f"Removing unit {uid}")
+            units.pop(uid, None)
+
+        # Keep your device cleanup as-is
+        if client_id and client_id in devices:
+            print(f"Removing device {client_id}")
+            devices.pop(client_id, None)
 
         try:
             buffered.close()
@@ -62,6 +66,7 @@ def handle_message(sock, msg, client_id):
     msg_type = msg["type"]
     sender_id = msg["sender_id"]
     payload = msg["payload"]
+    print("LOGIN PAYLOAD:", payload)
     if msg_type == "register_device":
         handle_register_device(sock, sender_id, payload)
     elif msg_type == "ui_definition":
@@ -73,7 +78,7 @@ def handle_message(sock, msg, client_id):
     elif msg_type == "get_ui":
         handle_get_ui(sock, sender_id, payload)
     elif msg_type == "action":
-        handle_action(sender_id, payload)
+        handle_action(sock, sender_id, payload)
     elif msg_type == "login":
         handle_login_for_gui(sock, sender_id, payload)
 
@@ -119,6 +124,11 @@ def handle_ui_definition(sender_id, payload):
 def handle_device_state(device_id, payload):
     """Update the state of a device and notify all units of the change."""
     state = payload["state"]
+
+    if device_id not in devices:
+        print(f"State from unregistered device {device_id}: {state}")
+        return
+    
     devices[device_id]["state"] = state
 
     # DB Save device state in DB
@@ -169,14 +179,16 @@ def handle_get_ui(sock, unit_id, payload):
 
     if not device:
         # fallback to DB (device might be offline but still stored)
-        ui, state = fetch_device_ui_and_state(device_id)
-        if ui == [] and state == {}:
+        result = fetch_device_ui_and_state(device_id)
+        if result is None:
             send_json(sock, {
-            "type": "error",
-            "sender_id": "server",
-            "payload": {"message": f"Unknown deviceId {device_id}"}
+                "type": "error",
+                "sender_id": "server",
+                "payload": {"message": f"Unknown deviceId {device_id}"}
             })
             return
+
+        ui, state = result
         send_json(sock, {
             "type": "ui_definition",
             "sender_id": "server",
@@ -211,6 +223,13 @@ def handle_action(sock, unit_id, payload):
                 "action": action
             }
         })
+    else:
+        send_json(sock, {
+            "type": "error",
+            "sender_id": "server",
+            "payload": {"message": f"Device {device_id} is not connected"}
+        })
+    return
 
 
 
@@ -245,20 +264,15 @@ def require_login(sock):
 
 
 def handle_login_for_gui(sock, unit_id, payload):
-    """
-    Unit login handler:
-    - checks credentials in DB
-    - if ok: store unit socket in units dict using userId as key
-    - replies with login_result
-    """
+
     email = payload.get("email")
     password = payload.get("password")
 
     if not email or not password:
         send_json(sock, {
-            "type": "login_result",
+            "type": "login_failed",
             "sender_id": "server",
-            "payload": {"ok": False, "message": "Missing email or password"}
+            "payload": {"message": "Missing email or password"}
         })
         return
 
@@ -266,23 +280,22 @@ def handle_login_for_gui(sock, unit_id, payload):
 
     if not ok:
         send_json(sock, {
-            "type": "login_result",
+            "type": "login_failed",
             "sender_id": "server",
-            "payload": {"ok": False, "message": "Invalid email or password"}
+            "payload": {"message": "Invalid email or password"}
         })
         return
 
-    # Save this unit socket so server can push state updates to it
-    user_id = str(user["userId"])   # store as string to keep dict keys consistent
+    user_id = str(user["userId"])
     units[user_id] = sock
+    unit_sockets[sock] = user_id
 
     send_json(sock, {
-        "type": "login_result",
+        "type": "login_ok",
         "sender_id": "server",
         "payload": {
-            "ok": True,
             "userId": user["userId"],
             "role": user["role"],
             "message": "Login successful"
         }
-    })    
+    })

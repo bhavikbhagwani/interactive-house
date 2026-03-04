@@ -2,6 +2,20 @@ import sqlite3
 
 import threading
 
+def seed_default_users():
+    # local imports to avoid circular import
+    from db_service import create_user, find_user_by_email
+
+    demo_users = [
+        ("user@email.com", "user123", "user"),
+        ("bhavik@email.com", "bhavik", "user"),
+        ("meryam@email.com", "meryam", "user"),
+    ]
+
+    for email, password, role in demo_users:
+        if not find_user_by_email(email):
+            print(f"Creating demo user: {email}")
+            create_user(email, password, role=role)
 
 DB_PATH = "smart_home.db"
 _db_lock = threading.Lock()
@@ -65,5 +79,7 @@ def initialize_db():
                 lastSeen TEXT        -- ISO timestamp
             );
         """)
+    
+    seed_default_users()
 
 

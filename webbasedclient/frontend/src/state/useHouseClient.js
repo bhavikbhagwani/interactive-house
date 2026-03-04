@@ -75,10 +75,14 @@ export function useHouseClient(options = {}) {
       }
 
       case MSG.STATE_UPDATE: {
+        const deviceId = payload.deviceId;
         const state = payload.state || {};
-        // Merge incremental updates
+
+        // only apply updates for the currently open device
+        if (selectedDeviceId && deviceId && deviceId !== selectedDeviceId) return;
+
         setLatestState((prev) => ({ ...prev, ...state }));
-        setStatusMsg(`State update for ${payload.deviceId || "device"}`);
+        setStatusMsg(`State update for ${deviceId || "device"}`);
         return;
       }
 
@@ -111,13 +115,9 @@ export function useHouseClient(options = {}) {
   }, [client, wsUrl]);
 
   // Actions (similar to send_json(...) in the CLI)
-  const login = (username, password) => {
+  const login = (email, password) => {
     setStatusMsg("Logging in...");
-    wsRef.current?.send(buildLogin(senderId, username, password));
-
-    // comment if python server DOES send login_ok/login_failed yet,
-    setView(VIEW.DEVICES);
-    wsRef.current?.send(buildGetDevices(senderId));
+    wsRef.current?.send(buildLogin(senderId, email, password));
   };
 
   const refreshDevices = () => {

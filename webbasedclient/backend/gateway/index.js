@@ -1,5 +1,6 @@
 const net = require("net");
-const { WebSocketServer } = require("ws");
+const WebSocket = require("ws");
+const { WebSocketServer } = WebSocket;
 
 const WS_PORT = Number(process.env.WS_PORT || 3001);
 const TCP_HOST = process.env.TCP_HOST || "127.0.0.1";
@@ -25,7 +26,7 @@ wss.on("connection", (ws) => {
     buf += chunk.toString("utf8");
     let i;
     while ((i = buf.indexOf("\n")) >= 0) {
-      const line = buf.slice(0, i).trim();
+      const line = buf.slice(0, i);
       buf = buf.slice(i + 1);
       if (!line) continue;
 
@@ -34,7 +35,11 @@ wss.on("connection", (ws) => {
         console.warn("[GW] bad JSON from TCP:", err.message);
         continue;
       }
-      if (ws.readyState === ws.OPEN)try{ ws.send(JSON.stringify(msg))}catch(e){console.error("[GW] WS send error:", e.message)};
+
+      if (ws.readyState === WebSocket.OPEN) {
+        try { ws.send(JSON.stringify(msg)); }
+        catch (e) { console.error("[GW] WS send error:", e.message); }
+      }
     }
   });
 
@@ -51,20 +56,34 @@ wss.on("connection", (ws) => {
   ws.on("message", (data) => {
     const text = data.toString("utf8");
     const [msg, err] = safeParse(text);
+
     if (err) {
-      if (ws.readyState === ws.OPEN) {
-        ws.send(JSON.stringify({ type: "error", payload: { message: "Invalid JSON" } }));
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({
+          type: "error",
+          sender_id: "gateway",
+          payload: { message: "Invalid JSON" }
+        }));
       }
       return;
     }
+
+    if (!sock.writable) {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({
+          type: "error",
+          sender_id: "gateway",
+          payload: { message: "TCP not connected" }
+        }));
+      }
+      return;
+    }
+
     sock.write(JSON.stringify(msg) + "\n");
-    // if socket destroyed/errored, ws will be closed by sock handlers, so no need to handle here
   });
 
-  ws.on("close", () => {
-    console.log("[GW] WS closed");
+  ws.on("close", (code, reason) => {
+    console.log("[GW] WS closed", code, reason?.toString?.() || "");
     try { sock.end(); } catch {}
   });
-  
-
 });

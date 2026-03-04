@@ -15,10 +15,9 @@ def upsert_device(device_id: str, device_type: str):
         INSERT INTO devices(deviceId, deviceType, lastSeen)
         VALUES(?, ?, ?)
         ON CONFLICT(deviceId) DO UPDATE SET
-               lastSeen = excluded.lastSeen;
-               """,
-               (device_id, device_type, time_now)
-               )
+            deviceType = excluded.deviceType,
+            lastSeen = excluded.lastSeen
+    """, (device_id, device_type, time_now))
 
 
 def save_ui_defination(device_id: str, ui: list):
@@ -51,21 +50,22 @@ def fetch_devices_list():
     return [{"deviceId": r["deviceId"], "deviceType": r["deviceType"]} for r in rows]
 
 def fetch_device_ui_and_state(device_id: str):
-    # data is stored as text in sqlite, when fetched it appears in row as string/text inside list.And list_rows itself is a list of rows.
-    """Return (ui_list, state_dict) from DB. If missing, return ([], {})."""
+    """
+    Return (ui_list, state_dict) if device exists in DB.
+    If deviceId not found, return None.
+    """
     list_rows = db_query("""
         SELECT uiDefinition, latestState
         FROM devices
         WHERE deviceId = ?;
     """, (device_id,))
-    if not list_rows:
-        return [], {}
 
-    # these values look like json when printed. however, in Python they are type str.
+    if not list_rows:
+        return None  # <-- CHANGED: truly unknown device
+
     ui_string = list_rows[0]["uiDefinition"]
     state_string = list_rows[0]["latestState"]
 
-    # Parse the json like strings to python object
     ui = json.loads(ui_string) if ui_string else []
     state = json.loads(state_string) if state_string else {}
     return ui, state

@@ -132,7 +132,6 @@ def main():
             if msg_type == "action":
                 light_on = handle_action(sock, msg, light_on)
             else:
-                # For iteration 1, the device only reacts to "action" messages
                 print("Ignoring message type:", msg_type)
 
     except KeyboardInterrupt:

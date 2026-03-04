@@ -24,11 +24,11 @@ export const MSG = {
 };
 
 // Message builders
-export function buildLogin(sender_id, username, password) {
+export function buildLogin(sender_id, email, password) {
   return {
     type: MSG.LOGIN,
     sender_id,
-    payload: { username, password },
+    payload: { email, password },
   };
 }
 
