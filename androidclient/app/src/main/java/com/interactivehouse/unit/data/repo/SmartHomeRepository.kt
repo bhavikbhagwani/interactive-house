@@ -5,7 +5,7 @@ import com.interactivehouse.unit.data.models.UiDefinition
 import kotlinx.coroutines.flow.Flow
 
 interface SmartHomeRepository {
-    suspend fun login(username: String, password: String): Boolean
+    suspend fun login(email: String, password: String): Boolean
     suspend fun getDevices(): List<Device>
     suspend fun getUi(deviceId: String): UiDefinition
     fun stateUpdates(deviceId: String): Flow<Map<String, Any>>

@@ -51,6 +51,34 @@ class SocketSmartHomeRepository(
 
     private val pending = ConcurrentHashMap<String, CompletableDeferred<JSONObject>>()
 
+    private suspend fun sendAndAwait(
+        msg: JSONObject,
+        responseType: String,
+        timeoutMs: Long = 5000
+    ): JSONObject {
+        val d = CompletableDeferred<JSONObject>()
+        pending[responseType] = d
+
+        return try {
+            send(msg)
+            withTimeout(timeoutMs) {
+                d.await()
+            }
+        } finally {
+            pending.remove(responseType)
+        }
+    }
+
+    private fun closeResources() {
+        runCatching { reader?.close() }
+        runCatching { writer?.close() }
+        runCatching { socket?.close() }
+
+        reader = null
+        writer = null
+        socket = null
+    }
+
     private suspend fun ensureConnected() {
         val s = socket
         if (s != null && s.isConnected && !s.isClosed) return
@@ -70,14 +98,7 @@ class SocketSmartHomeRepository(
     private suspend fun disconnect() {
         runCatching { readJob?.cancel() }
         readJob = null
-
-        runCatching { reader?.close() }
-        runCatching { writer?.close() }
-        runCatching { socket?.close() }
-
-        reader = null
-        writer = null
-        socket = null
+        closeResources()
     }
 
     private fun baseMessage(type: String, payload: JSONObject = JSONObject()): JSONObject {
@@ -132,7 +153,7 @@ class SocketSmartHomeRepository(
         } catch (e: Exception) {
             log("READ LOOP ERROR: ${e.message}")
         } finally {
-            runCatching { disconnect() }
+            closeResources()
             log("DISCONNECTED")
         }
     }
@@ -157,17 +178,19 @@ class SocketSmartHomeRepository(
         flowFor(deviceId).emit(stateMap)
     }
 
-    override suspend fun login(username: String, password: String): Boolean {
-        log("LOGIN start: host=$host port=$port user=$username")
+    override suspend fun login(email: String, password: String): Boolean {
+        log("LOGIN start: host=$host port=$port user=$email")
 
         val payload = JSONObject()
-            .put("username", username)
+            .put("email", email)
             .put("password", password)
 
         return try {
-            send(baseMessage("login", payload))
+            val okMsg = runCatching {
+                sendAndAwait(baseMessage("login", payload), "login_ok", 5000)
+            }.getOrNull()
 
-            runCatching { awaitType("login_ok", 5000) }.getOrNull()?.let {
+            if (okMsg != null) {
                 log("LOGIN ok")
                 return true
             }
@@ -185,10 +208,8 @@ class SocketSmartHomeRepository(
     }
 
     override suspend fun getDevices(): List<Device> {
-        send(baseMessage("get_devices"))
-
         val msg = try {
-            awaitType("device_list", timeoutMs = 4000)
+            sendAndAwait(baseMessage("get_devices"), "device_list", timeoutMs = 4000)
         } catch (e: Exception) {
             val err = runCatching { awaitType("error", timeoutMs = 500) }.getOrNull()
             val reason = err?.optJSONObject("payload")?.optString("message")
@@ -210,10 +231,12 @@ class SocketSmartHomeRepository(
     }
 
     override suspend fun getUi(deviceId: String): UiDefinition {
-        send(baseMessage("get_ui", JSONObject().put("deviceId", deviceId)))
-
         val msg = try {
-            awaitType("ui_definition", timeoutMs = 4000)
+            sendAndAwait(
+                baseMessage("get_ui", JSONObject().put("deviceId", deviceId)),
+                "ui_definition",
+                timeoutMs = 4000
+            )
         } catch (e: Exception) {
             val err = runCatching { awaitType("error", timeoutMs = 800) }.getOrNull()
             val reason = err?.optJSONObject("payload")?.optString("message")
@@ -222,10 +245,16 @@ class SocketSmartHomeRepository(
         }
 
         val p = msg.optJSONObject("payload") ?: JSONObject()
+        log("GET_UI payload for $deviceId = $p")
         val title = p.optString("title").ifBlank { p.optString("deviceType") }.ifBlank { deviceId }
+
+        val stateObj = p.optJSONObject("state") ?: JSONObject()
+        val initialState = jsonObjectToMap(stateObj)
+        log("GET_UI initialState for $deviceId = $initialState")
 
         val uiArr = p.optJSONArray("ui") ?: JSONArray()
         val controls = mutableListOf<Control>()
+
 
         for (i in 0 until uiArr.length()) {
             val c = uiArr.optJSONObject(i) ?: continue
@@ -246,18 +275,26 @@ class SocketSmartHomeRepository(
 
                     if (stateKey.isNotBlank()) DisabledWhen(stateKey = stateKey, equals = equals) else null
                 } else null
+            val enabled =
+                if (c.has("enabled")) c.optBoolean("enabled")
+                else null
 
             controls.add(
                 Control(
                     kind = kind,
                     label = label,
                     action = action,
-                    disabledWhen = disabledWhen
+                    disabledWhen = disabledWhen,
+                    enabled = enabled
                 )
             )
         }
 
-        return UiDefinition(title = title, controls = controls)
+        return UiDefinition(
+            title = title,
+            controls = controls,
+            initialState = initialState
+        )
     }
 
     override fun stateUpdates(deviceId: String): Flow<Map<String, Any>> {

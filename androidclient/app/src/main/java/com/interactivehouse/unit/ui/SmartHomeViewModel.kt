@@ -30,19 +30,19 @@ class SmartHomeViewModel(private val repo: SmartHomeRepository) : ViewModel() {
 
     private var updatesJob: Job? = null
 
-    fun login(username: String, password: String) {
+    fun login(email: String, password: String) {
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true, loginError = null) }
 
             val ok = withContext(Dispatchers.IO) {
-                repo.login(username, password)
+                repo.login(email, password)
             }
 
             if (ok) {
                 _state.update { it.copy(isLoggedIn = true, isLoading = false) }
                 loadDevices()
             } else {
-                _state.update { it.copy(isLoading = false, loginError = "login_failed") }
+                _state.update { it.copy(isLoading = false, loginError = "Invalid email or password") }
             }
         }
     }
@@ -68,26 +68,45 @@ class SmartHomeViewModel(private val repo: SmartHomeRepository) : ViewModel() {
     fun selectDevice(device: Device) {
         viewModelScope.launch {
             _state.update {
-                it.copy(selectedDevice = device, uiDefinition = null, latestState = emptyMap())
+                it.copy(
+                    selectedDevice = device,
+                    uiDefinition = null,
+                    latestState = emptyMap(),
+                    error = null
+                )
             }
 
-            val ui = withContext(Dispatchers.IO) {
-                repo.getUi(device.deviceId)
-            }
-
-            _state.update { it.copy(uiDefinition = ui) }
-
-            updatesJob?.cancel()
-            updatesJob = launch {
-                repo.stateUpdates(device.deviceId).collect { st ->
-                    _state.update {
-                        it.copy(
-                            latestState = st,
-                            deviceStates = it.deviceStates + (device.deviceId to st)
-                        )
-                    }
+            runCatching {
+                withContext(Dispatchers.IO) {
+                    repo.getUi(device.deviceId)
                 }
             }
+                .onSuccess { ui ->
+                    android.util.Log.d("SmartHomeVM", "UI initialState for ${device.deviceId} = ${ui.initialState}")
+
+                    _state.update {
+                        it.copy(
+                            uiDefinition = ui,
+                            latestState = ui.initialState,
+                            deviceStates = it.deviceStates + (device.deviceId to ui.initialState)
+                        )
+                    }
+
+                    updatesJob?.cancel()
+                    updatesJob = launch {
+                        repo.stateUpdates(device.deviceId).collect { st ->
+                            _state.update {
+                                it.copy(
+                                    latestState = st,
+                                    deviceStates = it.deviceStates + (device.deviceId to st)
+                                )
+                            }
+                        }
+                    }
+                }
+                .onFailure { e ->
+                    _state.update { it.copy(error = e.message ?: "Failed to load device UI") }
+                }
         }
     }
 

@@ -66,10 +66,14 @@ private fun DynamicControls(
         controls.forEach { c ->
             when (c.kind) {
                 "button" -> {
-                    val disabled = c.disabledWhen?.let { rule ->
+                    val disabledFromRule = c.disabledWhen?.let { rule ->
                         val v = latestState[rule.stateKey]
                         (v is Boolean) && (v == rule.equals)
                     } ?: false
+
+                    val disabledFromEnabled = c.enabled == false
+
+                    val disabled = disabledFromRule || disabledFromEnabled
 
                     Button(
                         onClick = { onAction(c.action) },

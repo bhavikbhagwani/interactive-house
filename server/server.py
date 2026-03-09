@@ -20,7 +20,7 @@ def main():
     while True:
         client_sock, addr = server_sock.accept()
         threading.Thread(
-            target=safe_handle_client,
+            target=handle_client,
             args=(client_sock, addr),
             daemon=True
         ).start()

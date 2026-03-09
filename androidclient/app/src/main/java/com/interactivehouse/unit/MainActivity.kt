@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.ui.Modifier
-import com.interactivehouse.unit.data.repo.FakeSmartHomeRepository
 import com.interactivehouse.unit.data.repo.SocketSmartHomeRepository
 import com.interactivehouse.unit.ui.SmartHomeViewModel
 import com.interactivehouse.unit.ui.navigation.AppRoot
