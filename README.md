@@ -69,7 +69,7 @@ Not in scope yet:
 
 - Advanced security (encryption, password hashing, signup/account management)
 
-### Run the web based client (React + Node Gateway)
+### Run the web based client (React + Node Gateway) (Windows)
 
 #### start the python server
 
@@ -125,6 +125,44 @@ Note: This is login only (no sign-up in Iteration 2). Users are seeded into SQLi
 
 - Press buttons → actions go Unit → Server → Device, and state updates are broadcast back
 
+### Run the Android Client (Android Studio + Emulator) (Windows)
+
+#### start the python server
+
+```bash
+    cd server
+    pip install -r requirements.txt
+    python server.py
+```
+Demo login credentials (seeded):
+
+user@email.com / user123
+
+bhavik@email.com / bhavik
+
+meryam@email.com / meryam
+
+Note: This is login only (no sign-up in Iteration 2). Users are seeded into SQLite on server startup.
+
+#### start the simulated devices
+
+```bash
+    cd device
+    python light.py
+    python door.py
+    python coffee_machine.py
+```
+#### Open the Android project in Android Studio and run the app
+
+#### Test flow (Android app)
+
+- Login with one of the demo users
+
+- The device list will load from the server
+
+- Select a device (Light / Door / Coffee Machine)
+
+- Press buttons → actions go Unit → Server → Device, and state updates are broadcast back
 
 ## Iteration 3 – Overview
 
