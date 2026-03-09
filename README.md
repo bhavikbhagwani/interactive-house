@@ -4,7 +4,7 @@ The goal is to design a server-centric, distributed system that allows users—e
 
 The system supports permission-based control, where different users (e.g. user vs caregiver) may have different access rights. Devices provide their own UI definitions, and users interact through mobile or web-based units.
 
-### Architecture
+## Architecture
 
 All communication goes through a central server:
 
@@ -14,12 +14,12 @@ All communication goes through a central server:
 
 - Units render device-provided UIs without hardcoding device logic
 
-### Development Approach
+## Development Approach
 
 The project follows an iterative (RUP-inspired) process.
 Each iteration delivers a working system, even if small, and builds on the previous one.
 
-### Iteration 1 – Overview
+## Iteration 1 – Overview
 
 Goal: prove the end-to-end architecture works.
 
@@ -41,7 +41,7 @@ Focus:
 
 - In-memory state only (no DB, no permissions, no Android app yet)
 
-### Iteration 2 – Overview
+## Iteration 2 – Overview
 
 Goal: scale the working end-to-end architecture from Iteration 1 by adding persistence, more devices, and real clients.
 
@@ -69,7 +69,63 @@ Not in scope yet:
 
 - Advanced security (encryption, password hashing, signup/account management)
 
+### Run the web based client (React + Node Gateway)
 
-### Iteration 3 – Overview
+#### start the python server
+
+```bash
+    cd server
+    pip install -r requirements.txt
+    python server.py
+```
+Demo login credentials (seeded):
+
+user@email.com / user123
+
+bhavik@email.com / bhavik
+
+meryam@email.com / meryam
+
+Note: This is login only (no sign-up in Iteration 2). Users are seeded into SQLite on server startup.
+
+#### start the simulated devices
+
+```bash
+    cd device
+    python light.py
+    python door.py
+    python coffee_machine.py
+```
+#### Start the Node WebSocket Gateway (Browser ↔ TCP Bridge)
+
+```bash
+    cd webbasedclient/backend/gateway
+    npm install
+    npm start
+```
+
+
+#### Start the React Frontend
+
+```bash
+    cd webbasedclient/frontend
+    npm install
+    npm run dev
+```
+
+#### Test flow (Web UI)
+
+- Verify Connected: Yes
+
+- Login with one of the demo users
+
+- Refresh device list
+
+- Open a device → UI is rendered dynamically from the device-provided UI definition
+
+- Press buttons → actions go Unit → Server → Device, and state updates are broadcast back
+
+
+## Iteration 3 – Overview
 
 To be defined later

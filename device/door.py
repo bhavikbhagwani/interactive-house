@@ -4,20 +4,14 @@ from protocol import send_json, recv_json_line
 SERVER_HOST = "localhost"
 SERVER_PORT = 5001
 
-# Unique identifier for this device
-DEVICE_ID = "light-1"
-
+DEVICE_ID = "door-1" #id
 
 def send_register_device(sock):
-    """
-    Inform the server that this client is a device.
-    This message is sent once when the device connects.
-    """
     msg = {
         "type": "register_device",
-        "sender_id": DEVICE_ID,          
+        "sender_id": DEVICE_ID,
         "payload": {
-            "deviceType": "light"
+            "deviceType": "door"
         }
     }
     print("SEND: register_device", msg)
@@ -25,14 +19,9 @@ def send_register_device(sock):
 
 
 def send_ui_definition(sock):
-    """
-    Send the UI definition to the server.
-    The device defines which controls it supports (ON / OFF buttons).
-    The unit will later render this UI.
-    """
     ui = [
-        {"type": "button", "action": "ON", "label": "Turn ON"},
-        {"type": "button", "action": "OFF", "label": "Turn OFF"},
+        {"type": "button", "action": "LOCK", "label": "Lock"},
+        {"type": "button", "action": "UNLOCK", "label": "Unlock"},
     ]
 
     msg = {
@@ -46,17 +35,13 @@ def send_ui_definition(sock):
     send_json(sock, msg)
 
 
-def send_state(sock, light_on: bool):
-    """
-    Send the current state of the device to the server.
-    For the light device, the state is whether the light is on or off.
-    """
+def send_state(sock, locked: bool):
     msg = {
         "type": "device_state",
         "sender_id": DEVICE_ID,
         "payload": {
-            "state": {          
-                "lightOn": light_on
+            "state": {
+                "locked": locked
             }
         }
     }
@@ -64,28 +49,23 @@ def send_state(sock, light_on: bool):
     send_json(sock, msg)
 
 
-def handle_action(sock, msg, light_on: bool) -> bool:
-    """
-    Handle an action received from the server.
-    Updates the internal state based on the action (ON / OFF)
-    and sends the updated state back to the server.
-    """
+def handle_action(sock, msg, locked: bool) -> bool:
     payload = msg.get("payload", {})
     action = payload.get("action")
 
     print("RECV: action", action)
 
-    if action == "ON":
-        light_on = True
-    elif action == "OFF":
-        light_on = False
+    if action == "LOCK":
+        locked = True
+    elif action == "UNLOCK":
+        locked = False
     else:
         print("Unknown action:", action)
-        return light_on
+        return locked
 
-    # Send updated state back to the server
-    send_state(sock, light_on)
-    return light_on
+    send_state(sock, locked)
+    return locked
+
 
 def connect_with_retry(host, port, retry_seconds=2):
     while True:
@@ -100,25 +80,19 @@ def connect_with_retry(host, port, retry_seconds=2):
             print(f"Connect failed ({e}). Retrying in {retry_seconds}s...")
             time.sleep(retry_seconds)
 
+
 def main():
-    # 1) Connect to the server
     sock = connect_with_retry(SERVER_HOST, SERVER_PORT)
     print(f"Connected to server at {SERVER_HOST}:{SERVER_PORT}")
 
-    # Create a buffered reader for line-based JSON messages
     f = sock.makefile("r", encoding="utf-8", newline="\n")
 
-    # 2) Register this device with the server
     send_register_device(sock)
-
-    # 3) Send UI definition (buttons)
     send_ui_definition(sock)
 
-    # 4) Send initial state (light is off)
-    light_on = False
-    send_state(sock, light_on)
+    locked = False  # initial state
+    send_state(sock, locked)
 
-    # 5) Main loop: wait for actions from the server
     try:
         while True:
             msg = recv_json_line(f)
@@ -130,7 +104,7 @@ def main():
             print("RECV:", msg_type, msg)
 
             if msg_type == "action":
-                light_on = handle_action(sock, msg, light_on)
+                locked = handle_action(sock, msg, locked)
             else:
                 print("Ignoring message type:", msg_type)
 
