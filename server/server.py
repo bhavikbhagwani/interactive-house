@@ -1,6 +1,7 @@
 """This module provides the socket functionality for the server."""
 import socket
 import threading
+import traceback
 from serverService import handle_client
 from db_init import initialize_db
 
@@ -18,12 +19,11 @@ def main():
     print("Demo login: email: user@email.com, password: user123")
     while True:
         client_sock, addr = server_sock.accept()
-        thread = threading.Thread(
-            target=handle_client,
+        threading.Thread(
+            target=safe_handle_client,
             args=(client_sock, addr),
             daemon=True
-        )
-        thread.start()
+        ).start()
 
 if __name__ == "__main__":
     main()
