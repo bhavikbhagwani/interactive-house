@@ -49,6 +49,8 @@ def print_menu():
     print("2. LED 1 OFF")
     print("3. LED 2 ON")
     print("4. LED 2 OFF")
+    print("5. Window OPEN")
+    print("6. Window CLOSE")
     print("q. Quit")
 
 
@@ -83,6 +85,10 @@ def main():
                 send_action(sock, file_obj, "led-2", "ON")
             elif choice == "4":
                 send_action(sock, file_obj, "led-2", "OFF")
+            elif choice == "5":
+                send_action(sock, file_obj, "servo-1", "OPEN")
+            elif choice == "6":
+                send_action(sock, file_obj, "servo-1", "CLOSE")
             elif choice == "q":
                 break
             else:

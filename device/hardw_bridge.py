@@ -1,6 +1,6 @@
 
 """
-Hardware Bridge - Connects server to Arduino LEDs. RUN this in the terminal along with server.py and unit_client2.py to test the full system. :)
+Hardware Bridge - Connects server to Arduino devices such as LEDs and a servo(window). RUN this in the terminal along with server.py and unit_client2.py to test the full system. :)
 RUN ORDER:
     1. Start the server: python server.py
     2. Start the hardware bridge: python hardw_bridge.py --simulate  (or without --simulate if you have an Arduino connected and then it will run on port COM6)
@@ -10,6 +10,7 @@ Usage:
     python hardw_bridge.py --simulate         # Without Arduino
     python hardw_bridge.py --port COM6        # With Arduino (Windows)
     python hardw_bridge.py --port /dev/ttyUSB0  # With Arduino (Linux)
+
 """
 
 import socket
@@ -25,6 +26,11 @@ SERVER_PORT = 5001
 LED_DEVICES = [
     {"id": "led-1", "name": "LED 1", "pin": 13},
     {"id": "led-2", "name": "LED 2", "pin": 5},
+]
+
+#window
+SERVO_DEVICES = [
+    {"id": "servo-1", "name": "Window Servo", "pin": 10, "open_angle": 90, "close_angle": 0},
 ]
 
 DEFAULT_SERIAL_PORT = "COM6"
@@ -51,40 +57,46 @@ class ArduinoSerial:
         else:
             print("[Arduino] Running in SIMULATION mode")
     
-    def send_command(self, pin: int, state: bool) -> bool:
-        state_str = "ON" if state else "OFF"
-        command = f"LED:{pin}:{state_str}\n"
-        
+    def _send_command(self, command: str) -> bool:
         with self.lock:
             if self.simulate:
                 print(f"[Arduino SIM] {command.strip()}")
                 return True
-            
+
             try:
                 self.serial.write(command.encode())
                 response = self.serial.readline().decode().strip()
-                
+
                 if response.startswith("OK:"):
                     print(f"[Arduino] {command.strip()} -> {response}")
                     return True
-                else:
-                    print(f"[Arduino] Unexpected response: {response}")
-                    return False
+
+                print(f"[Arduino] Unexpected response: {response}")
+                return False
             except Exception as e:
                 print(f"[Arduino] Error sending command: {e}")
                 return False
+
+#LED
+    def send_led_command(self, pin: int, state: bool) -> bool:
+        state_str = "ON" if state else "OFF"
+        command = f"LED:{pin}:{state_str}\n"
+        return self._send_command(command)
+
+#window
+    def send_servo_command(self, pin: int, angle: int) -> bool:
+        command = f"SERVO:{pin}:{angle}\n"
+        return self._send_command(command)
     
     def close(self):
         if self.serial:
             self.serial.close()
-# LED DEVICE
-class LEDDevice:
+class BaseDevice:
     def __init__(self, device_id: str, name: str, pin: int, arduino: ArduinoSerial):
         self.device_id = device_id
         self.name = name
         self.pin = pin
         self.arduino = arduino
-        self.state = False
         self.sock = None
         self.running = False
     
@@ -102,6 +114,49 @@ class LEDDevice:
                 print(f"[{self.device_id}] Connection failed ({e}), retrying...")
                 time.sleep(2)
     
+    def send_register(self):
+        raise NotImplementedError
+
+    def send_ui_definition(self):
+        raise NotImplementedError
+
+    def send_state(self):
+        raise NotImplementedError
+
+    def handle_action(self, action: str):
+        raise NotImplementedError
+
+    def run(self):
+        self.running = True
+        f = self.sock.makefile("r", encoding="utf-8", newline="\n")
+
+        try:
+            while self.running:
+                msg = recv_json_line(f)
+                if msg is None:
+                    print(f"[{self.device_id}] Server disconnected")
+                    break
+
+                msg_type = msg.get("type")
+                if msg_type == "action":
+                    action = msg.get("payload", {}).get("action")
+                    self.handle_action(action)
+        except Exception as e:
+            print(f"[{self.device_id}] Error: {e}")
+        finally:
+            self.sock.close()
+
+    def stop(self):
+        self.running = False
+        if self.sock:
+            self.sock.close()
+
+
+class LEDDevice(BaseDevice):
+    def __init__(self, device_id: str, name: str, pin: int, arduino: ArduinoSerial):
+        super().__init__(device_id, name, pin, arduino)
+        self.state = False
+
     def send_register(self):
         msg = {
             "type": "register_device",
@@ -141,36 +196,76 @@ class LEDDevice:
         else:
             print(f"[{self.device_id}] Unknown action: {action}")
             return
-        
-        success = self.arduino.send_command(self.pin, new_state)
+
+        success = self.arduino.send_led_command(self.pin, new_state)
         if success:
             self.state = new_state
             self.send_state()
-    
-    def run(self):
-        self.running = True
-        f = self.sock.makefile("r", encoding="utf-8", newline="\n")
-        
-        try:
-            while self.running:
-                msg = recv_json_line(f)
-                if msg is None:
-                    print(f"[{self.device_id}] Server disconnected")
-                    break
-                
-                msg_type = msg.get("type")
-                if msg_type == "action":
-                    action = msg.get("payload", {}).get("action")
-                    self.handle_action(action)
-        except Exception as e:
-            print(f"[{self.device_id}] Error: {e}")
-        finally:
-            self.sock.close()
-    
-    def stop(self):
-        self.running = False
-        if self.sock:
-            self.sock.close()
+
+
+class ServoDevice(BaseDevice):
+    def __init__(
+        self,
+        device_id: str,
+        name: str,
+        pin: int,
+        open_angle: int,
+        close_angle: int,
+        arduino: ArduinoSerial,
+    ):
+        super().__init__(device_id, name, pin, arduino)
+        self.open_angle = open_angle
+        self.close_angle = close_angle
+        self.position = close_angle
+
+    def send_register(self):
+        msg = {
+            "type": "register_device",
+            "sender_id": self.device_id,
+            "payload": {"deviceType": "servo"}
+        }
+        send_json(self.sock, msg)
+        print(f"[{self.device_id}] Registered as servo device")
+
+    def send_ui_definition(self):
+        ui = [
+            {"type": "button", "action": "OPEN", "label": f"{self.name} OPEN"},
+            {"type": "button", "action": "CLOSE", "label": f"{self.name} CLOSE"},
+        ]
+        msg = {
+            "type": "ui_definition",
+            "sender_id": self.device_id,
+            "payload": {"ui": ui}
+        }
+        send_json(self.sock, msg)
+        print(f"[{self.device_id}] Sent UI definition")
+
+    def send_state(self):
+        msg = {
+            "type": "device_state",
+            "sender_id": self.device_id,
+            "payload": {"state": {"position": self.position}}
+        }
+        send_json(self.sock, msg)
+        print(f"[{self.device_id}] Position: {self.position}")
+
+    def handle_action(self, action: str):
+        if action == "OPEN":
+            angle = self.open_angle
+        elif action == "CLOSE":
+            angle = self.close_angle
+        else:
+            print(f"[{self.device_id}] Unknown action: {action}")
+            return
+
+        if not 0 <= angle <= 180:
+            print(f"[{self.device_id}] Invalid angle: {angle}")
+            return
+
+        success = self.arduino.send_servo_command(self.pin, angle)
+        if success:
+            self.position = angle
+            self.send_state()
 
 # HARDWARE BRIDGE
 class HardwareBridge:
@@ -184,6 +279,17 @@ class HardwareBridge:
                 device_id=config["id"],
                 name=config["name"],
                 pin=config["pin"],
+                arduino=self.arduino
+            )
+            self.devices.append(device)
+
+        for config in SERVO_DEVICES:
+            device = ServoDevice(
+                device_id=config["id"],
+                name=config["name"],
+                pin=config["pin"],
+                open_angle=config["open_angle"],
+                close_angle=config["close_angle"],
                 arduino=self.arduino
             )
             self.devices.append(device)
@@ -224,7 +330,7 @@ class HardwareBridge:
 
 # MAIN
 def main():
-    parser = argparse.ArgumentParser(description="Hardware Bridge for Arduino LEDs")
+    parser = argparse.ArgumentParser(description="Hardware Bridge for Arduino LEDs and servo devices")
     parser.add_argument("--simulate", action="store_true", 
                         help="Run without Arduino (simulation mode)")
     parser.add_argument("--port", default=DEFAULT_SERIAL_PORT,

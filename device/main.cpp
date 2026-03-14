@@ -1,13 +1,19 @@
 //This is the main firmware code for the Arduino device. It listens for serial commands in the format "LED:<pin>:<state>" and controls the specified LED accordingly. Supported states are "ON" and "OFF". The firmware also sends back responses indicating success or error. HOWEVER THIS CAN ONLY BE COMPLIED IN PLATFORMIO WITH THE ARDUINO FRAMEWORK, NOT IN A STANDARD C++ ENVIRONMENT. :)
 
 #include <Arduino.h>
+#include <Servo.h>
 
 const int ledPins[] = {13, 5};
 const int ledCount = sizeof(ledPins) / sizeof(ledPins[0]);
+const int servoPin = 10;  //Window
+const int servoStartPos = 90;
 
 String inputBuffer = "";
+Servo win;
+int servoPos = servoStartPos;
 
 bool isSupportedPin(int pin);
+bool isValidServoPin(int pin);
 void handleCommand(const String& command);
 
 void setup() {
@@ -17,6 +23,9 @@ void setup() {
   }
 
   Serial.begin(9600);
+
+  win.attach(servoPin);
+  win.write(servoPos);
 }
 
 void loop() {
@@ -44,6 +53,10 @@ bool isSupportedPin(int pin) {
   return false;
 }
 
+bool isValidServoPin(int pin) {
+  return pin == servoPin;
+}
+
 void handleCommand(const String& command) {
   int firstColon = command.indexOf(':');
   int secondColon = command.indexOf(':', firstColon + 1);
@@ -57,30 +70,52 @@ void handleCommand(const String& command) {
   String pinText = command.substring(firstColon + 1, secondColon);
   String stateText = command.substring(secondColon + 1);
 
-  if (deviceType != "LED") {
-    Serial.println("ERR:UNKNOWN_DEVICE");
-    return;
-  }
-
   int pin = pinText.toInt();
-  if (!isSupportedPin(pin)) {
-    Serial.println("ERR:UNSUPPORTED_PIN");
+
+  if (deviceType == "LED") {
+    if (!isSupportedPin(pin)) {
+      Serial.println("ERR:UNSUPPORTED_PIN");
+      return;
+    }
+
+    if (stateText == "ON") {
+      digitalWrite(pin, HIGH);
+      Serial.print("OK:");
+      Serial.println(command);
+      return;
+    }
+
+    if (stateText == "OFF") {
+      digitalWrite(pin, LOW);
+      Serial.print("OK:");
+      Serial.println(command);
+      return;
+    }
+
+    Serial.println("ERR:UNKNOWN_STATE");
     return;
   }
 
-  if (stateText == "ON") {
-    digitalWrite(pin, HIGH);
-    Serial.print("OK:");
-    Serial.println(command);
+  if (deviceType == "SERVO") {
+    if (!isValidServoPin(pin)) {
+      Serial.println("ERR:UNSUPPORTED_PIN");
+      return;
+    }
+
+    int angle = stateText.toInt();
+    if (angle < 0 || angle > 180) {
+      Serial.println("ERR:INVALID_ANGLE");
+      return;
+    }
+
+    servoPos = angle;
+    win.write(servoPos);
+    Serial.print("OK:SERVO:");
+    Serial.print(pin);
+    Serial.print(":");
+    Serial.println(servoPos);
     return;
   }
 
-  if (stateText == "OFF") {
-    digitalWrite(pin, LOW);
-    Serial.print("OK:");
-    Serial.println(command);
-    return;
-  }
-
-  Serial.println("ERR:UNKNOWN_STATE");
+  Serial.println("ERR:UNKNOWN_DEVICE");
 }
