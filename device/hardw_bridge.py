@@ -1,0 +1,244 @@
+
+"""
+Hardware Bridge - Connects server to Arduino LEDs. RUN this in the terminal along with server.py and unit_client2.py to test the full system. :)
+RUN ORDER:
+    1. Start the server: python server.py
+    2. Start the hardware bridge: python hardw_bridge.py --simulate  (or without --simulate if you have an Arduino connected and then it will run on port COM6)
+    3. Start the test client: python unit_client2.py
+
+Usage:
+    python hardw_bridge.py --simulate         # Without Arduino
+    python hardw_bridge.py --port COM6        # With Arduino (Windows)
+    python hardw_bridge.py --port /dev/ttyUSB0  # With Arduino (Linux)
+"""
+
+import socket
+import threading
+import argparse
+import time
+from protocol import send_json, recv_json_line
+
+# CONFIGURATION
+SERVER_HOST = "localhost"
+SERVER_PORT = 5001
+
+LED_DEVICES = [
+    {"id": "led-1", "name": "LED 1", "pin": 13},
+    {"id": "led-2", "name": "LED 2", "pin": 5},
+]
+
+DEFAULT_SERIAL_PORT = "COM6"
+SERIAL_BAUD_RATE = 9600
+
+# ARDUINO SERIAL COMMUNICATION
+class ArduinoSerial:
+    def __init__(self, port: str, simulate: bool = False):
+        self.port = port
+        self.simulate = simulate
+        self.serial = None
+        self.lock = threading.Lock()
+        
+        if not simulate:
+            try:
+                import serial
+                self.serial = serial.Serial(port, SERIAL_BAUD_RATE, timeout=1)
+                time.sleep(2)
+                print(f"[Arduino] Connected to {port}")
+            except Exception as e:
+                print(f"[Arduino] ERROR: Could not connect to {port}: {e}")
+                print("[Arduino] Falling back to simulation mode")
+                self.simulate = True
+        else:
+            print("[Arduino] Running in SIMULATION mode")
+    
+    def send_command(self, pin: int, state: bool) -> bool:
+        state_str = "ON" if state else "OFF"
+        command = f"LED:{pin}:{state_str}\n"
+        
+        with self.lock:
+            if self.simulate:
+                print(f"[Arduino SIM] {command.strip()}")
+                return True
+            
+            try:
+                self.serial.write(command.encode())
+                response = self.serial.readline().decode().strip()
+                
+                if response.startswith("OK:"):
+                    print(f"[Arduino] {command.strip()} -> {response}")
+                    return True
+                else:
+                    print(f"[Arduino] Unexpected response: {response}")
+                    return False
+            except Exception as e:
+                print(f"[Arduino] Error sending command: {e}")
+                return False
+    
+    def close(self):
+        if self.serial:
+            self.serial.close()
+# LED DEVICE
+class LEDDevice:
+    def __init__(self, device_id: str, name: str, pin: int, arduino: ArduinoSerial):
+        self.device_id = device_id
+        self.name = name
+        self.pin = pin
+        self.arduino = arduino
+        self.state = False
+        self.sock = None
+        self.running = False
+    
+    def connect(self, host: str, port: int):
+        while True:
+            try:
+                self.sock = socket.socket()
+                self.sock.connect((host, port))
+                print(f"[{self.device_id}] Connected to server")
+                return
+            except ConnectionRefusedError:
+                print(f"[{self.device_id}] Server not ready, retrying...")
+                time.sleep(2)
+            except OSError as e:
+                print(f"[{self.device_id}] Connection failed ({e}), retrying...")
+                time.sleep(2)
+    
+    def send_register(self):
+        msg = {
+            "type": "register_device",
+            "sender_id": self.device_id,
+            "payload": {"deviceType": "led"}
+        }
+        send_json(self.sock, msg)
+        print(f"[{self.device_id}] Registered as LED device")
+    
+    def send_ui_definition(self):
+        ui = [
+            {"type": "button", "action": "ON", "label": f"{self.name} ON"},
+            {"type": "button", "action": "OFF", "label": f"{self.name} OFF"},
+        ]
+        msg = {
+            "type": "ui_definition",
+            "sender_id": self.device_id,
+            "payload": {"ui": ui}
+        }
+        send_json(self.sock, msg)
+        print(f"[{self.device_id}] Sent UI definition")
+    
+    def send_state(self):
+        msg = {
+            "type": "device_state",
+            "sender_id": self.device_id,
+            "payload": {"state": {"ledOn": self.state}}
+        }
+        send_json(self.sock, msg)
+        print(f"[{self.device_id}] State: {'ON' if self.state else 'OFF'}")
+    
+    def handle_action(self, action: str):
+        if action == "ON":
+            new_state = True
+        elif action == "OFF":
+            new_state = False
+        else:
+            print(f"[{self.device_id}] Unknown action: {action}")
+            return
+        
+        success = self.arduino.send_command(self.pin, new_state)
+        if success:
+            self.state = new_state
+            self.send_state()
+    
+    def run(self):
+        self.running = True
+        f = self.sock.makefile("r", encoding="utf-8", newline="\n")
+        
+        try:
+            while self.running:
+                msg = recv_json_line(f)
+                if msg is None:
+                    print(f"[{self.device_id}] Server disconnected")
+                    break
+                
+                msg_type = msg.get("type")
+                if msg_type == "action":
+                    action = msg.get("payload", {}).get("action")
+                    self.handle_action(action)
+        except Exception as e:
+            print(f"[{self.device_id}] Error: {e}")
+        finally:
+            self.sock.close()
+    
+    def stop(self):
+        self.running = False
+        if self.sock:
+            self.sock.close()
+
+# HARDWARE BRIDGE
+class HardwareBridge:
+    def __init__(self, serial_port: str, simulate: bool = False):
+        self.arduino = ArduinoSerial(serial_port, simulate)
+        self.devices = []
+        self.threads = []
+        
+        for config in LED_DEVICES:
+            device = LEDDevice(
+                device_id=config["id"],
+                name=config["name"],
+                pin=config["pin"],
+                arduino=self.arduino
+            )
+            self.devices.append(device)
+    
+    def start(self, host: str, port: int):
+        print(f"\n{'='*50}")
+        print("Hardware Bridge Starting")
+        print(f"Server: {host}:{port}")
+        print(f"Devices: {len(self.devices)}")
+        print(f"{'='*50}\n")
+        
+        for device in self.devices:
+            device.connect(host, port)
+            device.send_register()
+            device.send_ui_definition()
+            device.send_state()
+        
+        for device in self.devices:
+            thread = threading.Thread(target=device.run, daemon=True)
+            thread.start()
+            self.threads.append(thread)
+        
+        print(f"\n[Bridge] All devices connected. Waiting for commands...\n")
+        
+        try:
+            while True:
+                time.sleep(1)
+        except KeyboardInterrupt:
+            self.stop()
+    
+    def stop(self):
+        print("\n[Bridge] Shutting down...")
+        for device in self.devices:
+            device.stop()
+        self.arduino.close()
+        print("[Bridge] Goodbye!")
+
+
+# MAIN
+def main():
+    parser = argparse.ArgumentParser(description="Hardware Bridge for Arduino LEDs")
+    parser.add_argument("--simulate", action="store_true", 
+                        help="Run without Arduino (simulation mode)")
+    parser.add_argument("--port", default=DEFAULT_SERIAL_PORT,
+                        help=f"Serial port for Arduino (default: {DEFAULT_SERIAL_PORT})")
+    parser.add_argument("--server", default=SERVER_HOST,
+                        help=f"Server hostname (default: {SERVER_HOST})")
+    parser.add_argument("--server-port", type=int, default=SERVER_PORT,
+                        help=f"Server port (default: {SERVER_PORT})")
+    
+    args = parser.parse_args()
+    
+    bridge = HardwareBridge(serial_port=args.port, simulate=args.simulate)
+    bridge.start(args.server, args.server_port)
+
+
+if __name__ == "__main__":
+    main()

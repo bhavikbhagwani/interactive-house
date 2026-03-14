@@ -21,3 +21,7 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
+
+# --- PlatformIO ---
+firmware/ .pio
+firmware/ .vscode
