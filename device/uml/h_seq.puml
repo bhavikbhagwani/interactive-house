@@ -1,0 +1,71 @@
+@startuml
+title Sequence Diagram for hardw_bridge.py
+
+actor User
+participant Main
+participant HardwareBridge
+participant ArduinoSerial
+participant LEDDevice
+participant ServoDevice
+participant Server
+participant Arduino
+
+User -> Main : run program
+Main -> HardwareBridge : create(serial_port, simulate)
+HardwareBridge -> ArduinoSerial : __init__(serial_port, simulate)
+
+HardwareBridge -> LEDDevice : create(...)
+HardwareBridge -> ServoDevice : create(...)
+
+Main -> HardwareBridge : start(host, port)
+
+loop for each device
+  HardwareBridge -> LEDDevice : connect(host, port)
+  LEDDevice -> Server : socket connect
+  Server --> LEDDevice : connected
+
+  HardwareBridge -> LEDDevice : send_register()
+  LEDDevice -> Server : register_device
+
+  HardwareBridge -> LEDDevice : send_ui_definition()
+  LEDDevice -> Server : ui_definition
+
+  HardwareBridge -> LEDDevice : send_state()
+  LEDDevice -> Server : device_state
+end
+
+loop for each device
+  HardwareBridge -> ServoDevice : connect(host, port)
+  ServoDevice -> Server : socket connect
+  Server --> ServoDevice : connected
+
+  HardwareBridge -> ServoDevice : send_register()
+  ServoDevice -> Server : register_device
+
+  HardwareBridge -> ServoDevice : send_ui_definition()
+  ServoDevice -> Server : ui_definition
+
+  HardwareBridge -> ServoDevice : send_state()
+  ServoDevice -> Server : device_state
+end
+
+HardwareBridge -> LEDDevice : run() in thread
+HardwareBridge -> ServoDevice : run() in thread
+
+Server -> LEDDevice : action(ON/OFF)
+LEDDevice -> LEDDevice : handle_action(action)
+LEDDevice -> ArduinoSerial : send_led_command(pin, state)
+ArduinoSerial -> Arduino : write("LED:pin:ON/OFF")
+Arduino --> ArduinoSerial : OK
+ArduinoSerial --> LEDDevice : success
+LEDDevice -> Server : device_state
+
+Server -> ServoDevice : action(OPEN/CLOSE)
+ServoDevice -> ServoDevice : handle_action(action)
+ServoDevice -> ArduinoSerial : send_servo_command(pin, angle)
+ArduinoSerial -> Arduino : write("SERVO:pin:angle")
+Arduino --> ArduinoSerial : OK
+ArduinoSerial --> ServoDevice : success
+ServoDevice -> Server : device_state
+
+@enduml

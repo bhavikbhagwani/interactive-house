@@ -1,0 +1,77 @@
+@startuml
+skinparam classAttributeIconSize 0
+
+title Class Diagram for hardw_bridge.py
+
+class ArduinoSerial {
+  - port: str
+  - simulate: bool
+  - serial
+  - lock: Lock
+  + __init__(port: str, simulate: bool = False)
+  - _send_command(command: str): bool
+  + send_led_command(pin: int, state: bool): bool
+  + send_servo_command(pin: int, angle: int): bool
+  + close()
+}
+
+abstract class BaseDevice {
+  - device_id: str
+  - name: str
+  - pin: int
+  - arduino: ArduinoSerial
+  - sock
+  - running: bool
+  + __init__(device_id: str, name: str, pin: int, arduino: ArduinoSerial)
+  + connect(host: str, port: int)
+  + send_register()
+  + send_ui_definition()
+  + send_state()
+  + handle_action(action: str)
+  + run()
+  + stop()
+}
+
+class LEDDevice {
+  - state: bool
+  + __init__(device_id: str, name: str, pin: int, arduino: ArduinoSerial)
+  + send_register()
+  + send_ui_definition()
+  + send_state()
+  + handle_action(action: str)
+}
+
+class ServoDevice {
+  - open_angle: int
+  - close_angle: int
+  - position: int
+  + __init__(device_id: str, name: str, pin: int, open_angle: int, close_angle: int, arduino: ArduinoSerial)
+  + send_register()
+  + send_ui_definition()
+  + send_state()
+  + handle_action(action: str)
+}
+
+class HardwareBridge {
+  - arduino: ArduinoSerial
+  - devices: list
+  - threads: list
+  + __init__(serial_port: str, simulate: bool = False)
+  + start(host: str, port: int)
+  + stop()
+}
+
+class Main {
+  + main()
+}
+
+BaseDevice <|-- LEDDevice
+BaseDevice <|-- ServoDevice
+
+BaseDevice --> ArduinoSerial : uses
+HardwareBridge *-- ArduinoSerial : owns
+HardwareBridge --> LEDDevice : creates
+HardwareBridge --> ServoDevice : creates
+Main --> HardwareBridge : creates/starts
+
+@enduml
