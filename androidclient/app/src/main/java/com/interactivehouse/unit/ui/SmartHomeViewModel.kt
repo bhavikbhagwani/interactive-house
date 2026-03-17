@@ -111,13 +111,44 @@ class SmartHomeViewModel(private val repo: SmartHomeRepository) : ViewModel() {
     }
 
     fun sendAction(action: String) {
-        val deviceId = _state.value.selectedDevice?.deviceId ?: return
+        val device = _state.value.selectedDevice ?: return
 
         viewModelScope.launch(Dispatchers.IO) {
-            runCatching { repo.sendAction(deviceId, action) }
-                .onFailure { e ->
-                    _state.update { it.copy(error = e.message ?: "error") }
+            runCatching {
+                repo.sendAction(device.deviceId, action)
+
+                val updatedUi = repo.getUi(device.deviceId)
+                val updatedState = updatedUi.initialState
+
+                _state.update { current ->
+                    current.copy(
+                        uiDefinition = updatedUi,
+                        latestState = updatedState,
+                        deviceStates = current.deviceStates + (device.deviceId to updatedState),
+                        error = null
+                    )
                 }
+
+                if (device.deviceType.contains("coffee", ignoreCase = true)) {
+                    kotlinx.coroutines.delay(35000)
+
+                    val refreshedUi = repo.getUi(device.deviceId)
+                    val refreshedState = refreshedUi.initialState
+
+                    _state.update { current ->
+                        current.copy(
+                            uiDefinition = refreshedUi,
+                            latestState = refreshedState,
+                            deviceStates = current.deviceStates + (device.deviceId to refreshedState),
+                            error = null
+                        )
+                    }
+                }
+            }.onFailure { e ->
+                _state.update {
+                    it.copy(error = e.message ?: "Failed to send action")
+                }
+            }
         }
     }
 
