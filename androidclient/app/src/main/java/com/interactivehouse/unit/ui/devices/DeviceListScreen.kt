@@ -1,14 +1,26 @@
 package com.interactivehouse.unit.ui.devices
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.interactivehouse.unit.data.models.Device
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.graphics.ColorFilter
+import com.interactivehouse.unit.R
 
 @Composable
 fun DeviceListScreen(
@@ -19,52 +31,243 @@ fun DeviceListScreen(
     onRefresh: () -> Unit,
     onSelect: (Device) -> Unit
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
+    Box(
+        modifier = Modifier.fillMaxSize()
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(220.dp)
+                .background(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            Color(0xFF6F86B6),
+                            Color(0xFF2C3E73),
+                            Color(0xFF0D1333)
+                        )
+                    )
+                )
+        )
+
+        Column(
+            modifier = Modifier.fillMaxSize()
         ) {
-            Text("Devices", style = MaterialTheme.typography.headlineMedium)
-            TextButton(onClick = onRefresh, enabled = !isLoading) { Text("Refresh") }
-        }
+            Spacer(modifier = Modifier.height(34.dp))
 
-        if (!error.isNullOrBlank()) {
-            Spacer(Modifier.height(8.dp))
-            Text(error, color = MaterialTheme.colorScheme.error)
-        }
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top
+            ) {
+                Column {
+                    Text(
+                        text = "Devices",
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold
+                    )
 
-        Spacer(Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(6.dp))
 
-        if (isLoading && devices.isEmpty()) {
-            CircularProgressIndicator()
-            return
-        }
+                    Text(
+                        text = "What would you like to control today?",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.White.copy(alpha = 0.9f)
+                    )
+                }
 
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            items(devices) { d ->
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { onSelect(d) }
+                TextButton(
+                    onClick = onRefresh,
+                    enabled = !isLoading
                 ) {
-                    Column(Modifier.padding(14.dp)) {
-                        Text(
-                            friendlyName(d.deviceType),
-                            style = MaterialTheme.typography.titleMedium
-                        )
-                        Spacer(Modifier.height(4.dp))
-                        Text(
-                            "ID: ${d.deviceId}",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
+                    Text(
+                        text = if (isLoading) "Loading..." else "Refresh",
+                        color = Color.White
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Surface(
+                modifier = Modifier.fillMaxSize(),
+                color = MaterialTheme.colorScheme.background,
+                shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+                tonalElevation = 2.dp,
+                shadowElevation = 4.dp
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 18.dp, vertical = 20.dp)
+                ) {
+                    if (!error.isNullOrBlank()) {
+                        Card(
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.errorContainer
+                            ),
+                            shape = RoundedCornerShape(16.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = error,
+                                color = MaterialTheme.colorScheme.onErrorContainer,
+                                modifier = Modifier.padding(14.dp)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
+
+                    if (isLoading && devices.isEmpty()) {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator()
+                        }
+                    } else if (!isLoading && devices.isEmpty()) {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "No devices available",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    } else {
+                        LazyColumn(
+                            verticalArrangement = Arrangement.spacedBy(14.dp),
+                            contentPadding = PaddingValues(bottom = 20.dp)
+                        ) {
+                            items(devices) { device ->
+                                val state = deviceStates[device.deviceId]
+                                val statusText = readableStatus(device.deviceType, state)
+
+                                Card(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable { onSelect(device) },
+                                    shape = RoundedCornerShape(22.dp),
+                                    elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(18.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(14.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        DeviceIcon(device.deviceType)
+
+                                        Column(
+                                            modifier = Modifier.weight(1f),
+                                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                                        ) {
+                                            Text(
+                                                text = friendlyName(device.deviceType),
+                                                style = MaterialTheme.typography.titleLarge,
+                                                fontWeight = FontWeight.SemiBold,
+                                                maxLines = 1
+                                            )
+
+                                            Text(
+                                                text = "Tap to view controls",
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                maxLines = 1
+                                            )
+
+                                            StatusChip(statusText)
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun StatusChip(text: String) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(50))
+            .background(Color(0xFFDCE6FF))
+            .padding(horizontal = 10.dp, vertical = 5.dp)
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelMedium,
+            color = Color(0xFF1F2A5A),
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1
+        )
+    }
+}
+
+@Composable
+private fun DeviceIcon(deviceType: String) {
+    val iconRes = when {
+        deviceType.contains("light", ignoreCase = true) -> R.drawable.lightbulb
+        deviceType.contains("door", ignoreCase = true) ||
+                deviceType.contains("lock", ignoreCase = true) -> R.drawable.door
+        deviceType.contains("coffee", ignoreCase = true) -> R.drawable.coffee_cup
+        else -> R.drawable.lightbulb
+    }
+
+    Box(
+        modifier = Modifier
+            .size(52.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(Color(0xFFDCE6FF)),
+        contentAlignment = Alignment.Center
+    ) {
+        Image(
+            painter = painterResource(id = iconRes),
+            contentDescription = null,
+            modifier = Modifier.size(26.dp),
+            colorFilter = ColorFilter.tint(Color(0xFF1F2A5A))
+        )
+    }
+}
+
+
+private fun readableStatus(
+    deviceType: String,
+    state: Map<String, Any>?
+): String {
+    if (state == null || state.isEmpty()) return "Tap to check status"
+
+    val type = deviceType.trim().lowercase()
+
+    return when {
+        "light" in type -> when (state["lightOn"]) {
+            true -> "ON"
+            false -> "OFF"
+            else -> "Unknown"
+        }
+
+        "door" in type || "lock" in type -> when (state["locked"]) {
+            true -> "LOCKED"
+            false -> "UNLOCKED"
+            else -> "Unknown"
+        }
+
+        "coffee" in type -> when (state["isMaking"]) {
+            true -> "MAKING COFFEE"
+            false -> "IDLE"
+            else -> "Unknown"
+        }
+
+        else -> "Unknown"
     }
 }
 
@@ -81,5 +284,43 @@ private fun friendlyName(deviceType: String): String {
         "door", "doorlock", "lock" -> "Door Lock"
         "coffeemachine", "coffee" -> "Coffee Machine"
         else -> deviceType
+    }
+}
+
+@Preview(showBackground = true, showSystemUi = true)
+@Composable
+private fun DeviceListScreenPreview() {
+    MaterialTheme {
+        DeviceListScreen(
+            devices = listOf(
+                Device(deviceId = "coffee-machine-1", deviceType = "coffee_machine"),
+                Device(deviceId = "door-1", deviceType = "door"),
+                Device(deviceId = "light-1", deviceType = "light")
+            ),
+            deviceStates = mapOf(
+                "coffee-machine-1" to mapOf("isMaking" to false),
+                "door-1" to mapOf("locked" to true),
+                "light-1" to mapOf("lightOn" to false)
+            ),
+            isLoading = false,
+            error = null,
+            onRefresh = {},
+            onSelect = {}
+        )
+    }
+}
+
+@Preview(showBackground = true, showSystemUi = true)
+@Composable
+private fun DeviceListScreenEmptyPreview() {
+    MaterialTheme {
+        DeviceListScreen(
+            devices = emptyList(),
+            deviceStates = emptyMap(),
+            isLoading = false,
+            error = null,
+            onRefresh = {},
+            onSelect = {}
+        )
     }
 }
