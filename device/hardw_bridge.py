@@ -33,7 +33,7 @@ SERVO_DEVICES = [
     {"id": "servo-1", "name": "Window Servo", "pin": 10, "open_angle": 90, "close_angle": 0},
 ]
 
-DEFAULT_SERIAL_PORT = "COM6"
+DEFAULT_SERIAL_PORT = "COM5"
 SERIAL_BAUD_RATE = 9600
 
 # ARDUINO SERIAL COMMUNICATION
