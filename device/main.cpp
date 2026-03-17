@@ -10,10 +10,11 @@ const int ledCount = sizeof(ledPins) / sizeof(ledPins[0]);
 const int servoPin = 10;  //Window
 const int servoStartPos = 90;
 
-const int doorServoPin = 9;  //Revolving door
-int doorPos = 0;
+const int doorServoPin = 9;  //Door
+const int doorStartPos = 0;
 
 const int fanPin = 6;
+const bool fanActiveLow = true; //if someone dare try it false and flushes in platformIO >:)
 
 //servo objects
 Servo win;
@@ -22,16 +23,30 @@ Servo door;
 //Variables
 String inputBuffer = "";
 int servoPos = servoStartPos;
+int doorPos = doorStartPos;
 
 //functions declarations
 bool isSupportedPin(int pin);
 bool isValidServoPin(int pin);
 void handleCommand(const String& command);
+void setFanState(bool on);
+int fanSignalLevel(bool on);
+
+int fanSignalLevel(bool on) {
+  if (fanActiveLow) {
+    return on ? LOW : HIGH;
+  }
+  return on ? HIGH : LOW;
+}
+
+void setFanState(bool on) {
+  digitalWrite(fanPin, fanSignalLevel(on));
+}
 
 void setup() {
   //fan
   pinMode(fanPin, OUTPUT);
-  digitalWrite(fanPin, LOW);
+  digitalWrite(fanPin, LOW);  // Set fanPin to LOW on startup when USB is connected
   
   for (int i = 0; i < ledCount; i++) {
     pinMode(ledPins[i], OUTPUT);
@@ -144,14 +159,14 @@ void handleCommand(const String& command) {
     }
 
     if (stateText == "ON") {
-        digitalWrite(fanPin, HIGH);
+        setFanState(true);
         Serial.print("OK:");
         Serial.println(command);
         return;
     }
 
     if (stateText == "OFF") {
-        digitalWrite(fanPin, LOW);
+        setFanState(false);
         Serial.print("OK:");
         Serial.println(command);
         return;

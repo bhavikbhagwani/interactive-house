@@ -17,6 +17,7 @@ import socket
 import threading
 import argparse
 import time
+import sys
 from protocol import send_json, recv_json_line
 
 # CONFIGURATION
@@ -28,12 +29,16 @@ LED_DEVICES = [
     {"id": "led-2", "name": "LED 2", "pin": 5},
 ]
 
+FAN_DEVICES = [
+    {"id": "fan-1", "name": "Fan", "pin": 6},
+]
+
 #window
 SERVO_DEVICES = [
     {"id": "servo-1", "name": "Window Servo", "pin": 10, "open_angle": 90, "close_angle": 0},
 ]
 
-DEFAULT_SERIAL_PORT = "COM5"
+DEFAULT_SERIAL_PORT = "COM6"
 SERIAL_BAUD_RATE = 9600
 
 # ARDUINO SERIAL COMMUNICATION
@@ -52,8 +57,8 @@ class ArduinoSerial:
                 print(f"[Arduino] Connected to {port}")
             except Exception as e:
                 print(f"[Arduino] ERROR: Could not connect to {port}: {e}")
-                print("[Arduino] Falling back to simulation mode")
-                self.simulate = True
+                print("[Arduino] Starta igen med korrekt --port eller använd --simulate om du vill testa utan hårdvara.")
+                raise
         else:
             print("[Arduino] Running in SIMULATION mode")
     
@@ -86,6 +91,11 @@ class ArduinoSerial:
 #window
     def send_servo_command(self, pin: int, angle: int) -> bool:
         command = f"SERVO:{pin}:{angle}\n"
+        return self._send_command(command)
+
+    def send_fan_command(self, pin: int, state: bool) -> bool:
+        state_str = "ON" if state else "OFF"
+        command = f"FAN:{pin}:{state_str}\n"
         return self._send_command(command)
     
     def close(self):
@@ -267,6 +277,57 @@ class ServoDevice(BaseDevice):
             self.position = angle
             self.send_state()
 
+
+class FanDevice(BaseDevice):
+    def __init__(self, device_id: str, name: str, pin: int, arduino: ArduinoSerial):
+        super().__init__(device_id, name, pin, arduino)
+        self.state = False
+
+    def send_register(self):
+        msg = {
+            "type": "register_device",
+            "sender_id": self.device_id,
+            "payload": {"deviceType": "fan"}
+        }
+        send_json(self.sock, msg)
+        print(f"[{self.device_id}] Registered as fan device")
+
+    def send_ui_definition(self):
+        ui = [
+            {"type": "button", "action": "ON", "label": f"{self.name} ON"},
+            {"type": "button", "action": "OFF", "label": f"{self.name} OFF"},
+        ]
+        msg = {
+            "type": "ui_definition",
+            "sender_id": self.device_id,
+            "payload": {"ui": ui}
+        }
+        send_json(self.sock, msg)
+        print(f"[{self.device_id}] Sent UI definition")
+
+    def send_state(self):
+        msg = {
+            "type": "device_state",
+            "sender_id": self.device_id,
+            "payload": {"state": {"fanOn": self.state}}
+        }
+        send_json(self.sock, msg)
+        print(f"[{self.device_id}] State: {'ON' if self.state else 'OFF'}")
+
+    def handle_action(self, action: str):
+        if action == "ON":
+            new_state = True
+        elif action == "OFF":
+            new_state = False
+        else:
+            print(f"[{self.device_id}] Unknown action: {action}")
+            return
+
+        success = self.arduino.send_fan_command(self.pin, new_state)
+        if success:
+            self.state = new_state
+            self.send_state()
+
 # HARDWARE BRIDGE
 class HardwareBridge:
     def __init__(self, serial_port: str, simulate: bool = False):
@@ -276,6 +337,15 @@ class HardwareBridge:
         
         for config in LED_DEVICES:
             device = LEDDevice(
+                device_id=config["id"],
+                name=config["name"],
+                pin=config["pin"],
+                arduino=self.arduino
+            )
+            self.devices.append(device)
+
+        for config in FAN_DEVICES:
+            device = FanDevice(
                 device_id=config["id"],
                 name=config["name"],
                 pin=config["pin"],
@@ -341,9 +411,13 @@ def main():
                         help=f"Server port (default: {SERVER_PORT})")
     
     args = parser.parse_args()
-    
-    bridge = HardwareBridge(serial_port=args.port, simulate=args.simulate)
-    bridge.start(args.server, args.server_port)
+
+    try:
+        bridge = HardwareBridge(serial_port=args.port, simulate=args.simulate)
+        bridge.start(args.server, args.server_port)
+    except Exception as e:
+        print(f"[Bridge] Startup failed: {e}")
+        sys.exit(1)
 
 
 if __name__ == "__main__":
