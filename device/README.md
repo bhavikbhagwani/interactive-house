@@ -61,7 +61,7 @@ After installing the driver and reconnecting the Arduino, the correct COM port s
 
 #### start the Hardware Bridge
 
-Use when Arduino is connected, change according to your own COM port (ex: COM5)
+Use when Arduino is connected, change according to your own COM port (ex: COM5) or use the Stimulated devices
 ```bash
     DEFAULT_SERIAL_PORT = "****"
 ```
