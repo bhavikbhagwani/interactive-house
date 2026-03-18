@@ -11,10 +11,14 @@ const int servoPin = 10;  //Window
 const int servoStartPos = 90;
 
 const int doorServoPin = 9;  //Door
-const int doorStartPos = 0;
+const int doorStartPos = 90;
 
 const int fanPin = 6;
 const bool fanActiveLow = true; //if someone dare try it false and flushes in platformIO >:)
+
+const int doorOpenAngle = 180;   
+const int doorCloseAngle = 0;    
+const int doorStopAngle = 90; 
 
 //servo objects
 Servo win;
@@ -60,7 +64,7 @@ void setup() {
 
   //door
   door.attach(doorServoPin);
-  door.write(doorPos);
+  door.write(doorStartPos);
 }
 
 void loop() {
@@ -89,7 +93,7 @@ bool isSupportedPin(int pin) {
 }
 
 bool isValidServoPin(int pin) {
-  return pin == servoPin || pin == doorServoPin;
+  return pin == servoPin;
 }
 
 void handleCommand(const String& command) {
@@ -177,24 +181,27 @@ void handleCommand(const String& command) {
 }
 
   if (deviceType == "DOOR") {
-      if (pin != doorServoPin) {
-          Serial.println("ERR:UNSUPPORTED_PIN");
-          return;
-      }
+    if (pin != doorServoPin) {
+        Serial.println("ERR:UNSUPPORTED_PIN");
+        return;
+    }
+    // Continuous rotation mapping
+    if (stateText == "OPEN") {
+      door.write(doorOpenAngle);
+    } else if (stateText == "CLOSE") {
+      door.write(doorCloseAngle);
+    } else if (stateText == "STOP") {
+      door.write(doorStopAngle);
+    } else {
+        Serial.println("ERR:UNKNOWN_STATE");
+        return;
+    }
 
-      int angle = stateText.toInt();
-      if (angle < 0 || angle > 180) {
-          Serial.println("ERR:INVALID_ANGLE");
-          return;
-      }
-
-      doorPos = angle;
-      door.write(doorPos);
-      Serial.print("OK:DOOR:");
-      Serial.print(pin);
-      Serial.print(":");
-      Serial.println(doorPos);
-      return;
+    Serial.print("OK:DOOR:");
+    Serial.print(pin);
+    Serial.print(":");
+    Serial.println(stateText);
+    return;
   }
 
   Serial.println("ERR:UNKNOWN_DEVICE");
