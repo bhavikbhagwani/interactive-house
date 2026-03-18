@@ -3,12 +3,12 @@
 Hardware Bridge - Connects server to Arduino devices such as LEDs and a servo(window). RUN this in the terminal along with server.py and unit_client2.py to test the full system. :)
 RUN ORDER:
     1. Start the server: python server.py
-    2. Start the hardware bridge: python hardw_bridge.py --simulate  (or without --simulate if you have an Arduino connected and then it will run on port COM6)
+    2. Start the hardware bridge: python hardw_bridge.py --simulate  (or without --simulate if you have an Arduino connected and then it will run on port COM6 - check the COM port)
     3. Start the test client: python unit_client2.py
 
 Usage:
     python hardw_bridge.py --simulate         # Without Arduino
-    python hardw_bridge.py --port COM6        # With Arduino (Windows)
+    python hardw_bridge.py --port COM6        # With Arduino (Windows) - check the COM port
     python hardw_bridge.py --port /dev/ttyUSB0  # With Arduino (Linux)
 
 """
