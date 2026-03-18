@@ -14,7 +14,7 @@ const int doorServoPin = 9;  //Door
 const int doorStartPos = 90;
 
 const int fanPin = 6;
-const bool fanActiveLow = true; //if someone dare try it false and flushes in platformIO >:)
+const bool fanActiveLow = true; //if someone dare try it false and flushes in platformIO >:) //i figured it out ;) < C
 
 const int doorOpenAngle = 180;   
 const int doorCloseAngle = 0;    
@@ -50,7 +50,8 @@ void setFanState(bool on) {
 void setup() {
   //fan
   pinMode(fanPin, OUTPUT);
-  digitalWrite(fanPin, LOW);  // Set fanPin to LOW on startup when USB is connected
+  setFanState(false);
+  //digitalWrite(fanPin, LOW);
   
   for (int i = 0; i < ledCount; i++) {
     pinMode(ledPins[i], OUTPUT);
