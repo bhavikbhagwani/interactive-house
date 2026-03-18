@@ -38,7 +38,12 @@ SERVO_DEVICES = [
     {"id": "servo-1", "name": "Window Servo", "pin": 10, "open_angle": 90, "close_angle": 0},
 ]
 
-DEFAULT_SERIAL_PORT = "COM6"
+#door
+DOOR_DEVICES = [
+    {"id": "door-1", "name": "Door", "pin": 9, "open_angle": 180, "close_angle": 0},
+]
+
+DEFAULT_SERIAL_PORT = "COM5"
 SERIAL_BAUD_RATE = 9600
 
 # ARDUINO SERIAL COMMUNICATION
@@ -98,9 +103,14 @@ class ArduinoSerial:
         command = f"FAN:{pin}:{state_str}\n"
         return self._send_command(command)
     
+    def send_door_command(self, pin: int, state: str) -> bool:
+        command = f"DOOR:{pin}:{state}\n"
+        return self._send_command(command)
+    
     def close(self):
         if self.serial:
             self.serial.close()
+
 class BaseDevice:
     def __init__(self, device_id: str, name: str, pin: int, arduino: ArduinoSerial):
         self.device_id = device_id
@@ -277,6 +287,65 @@ class ServoDevice(BaseDevice):
             self.position = angle
             self.send_state()
 
+class DoorDevice(BaseDevice):
+    def __init__(
+        self,
+        device_id: str,
+        name: str,
+        pin: int,
+        open_angle: int,
+        close_angle: int,
+        arduino: ArduinoSerial,
+    ):
+        super().__init__(device_id, name, pin, arduino)
+        self.open_angle = open_angle
+        self.close_angle = close_angle
+        self.position = close_angle
+
+    def send_register(self):
+        msg = {
+            "type": "register_device",
+            "sender_id": self.device_id,
+            "payload": {"deviceType": "door"}
+        }
+        send_json(self.sock, msg)
+        print(f"[{self.device_id}] Registered as door device")
+
+    def send_ui_definition(self):
+        ui = [
+            {"type": "button", "action": "OPEN", "label": f"{self.name} OPEN"},
+            {"type": "button", "action": "CLOSE", "label": f"{self.name} CLOSE"},
+            {"type": "button", "action": "STOP", "label": f"{self.name} STOP"},
+        ]
+        msg = {
+            "type": "ui_definition",
+            "sender_id": self.device_id,
+            "payload": {"ui": ui}
+        }
+        send_json(self.sock, msg)
+
+    def send_state(self):
+        msg = {
+            "type": "device_state",
+            "sender_id": self.device_id,
+            "payload": {"state": {"doorState": self.position}}
+        }
+        send_json(self.sock, msg)
+
+    def handle_action(self, action: str):
+        if action == "OPEN":
+            state = "OPEN"
+        elif action == "CLOSE":
+            state = "CLOSE"
+        elif action == "STOP":
+            state = "STOP"
+        else:
+            return
+
+        success = self.arduino.send_door_command(self.pin, state)
+        if success:
+            self.position = state
+            self.send_state()
 
 class FanDevice(BaseDevice):
     def __init__(self, device_id: str, name: str, pin: int, arduino: ArduinoSerial):
@@ -363,7 +432,18 @@ class HardwareBridge:
                 arduino=self.arduino
             )
             self.devices.append(device)
-    
+
+        for config in DOOR_DEVICES:
+            device = DoorDevice(
+                device_id=config["id"],
+                name=config["name"],
+                pin=config["pin"],
+                open_angle=config["open_angle"],
+                close_angle=config["close_angle"],
+                arduino=self.arduino
+            )
+            self.devices.append(device)
+            
     def start(self, host: str, port: int):
         print(f"\n{'='*50}")
         print("Hardware Bridge Starting")
