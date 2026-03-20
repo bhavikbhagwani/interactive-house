@@ -166,4 +166,32 @@ Note: This is login only (no sign-up in Iteration 2). Users are seeded into SQLi
 
 ## Iteration 3 – Overview
 
-To be defined later
+Goal: integrate the physical Arduino house into the system and validate that the architecture works with real hardware devices.
+
+Scope:
+
+- Existing Python TCP server (architecture unchanged)
+
+- Physical Arduino devices (LED lights and window)
+
+- Python hardware bridge connecting the Arduino to the server
+
+- Existing unit clients (Web and Android)
+
+Focus:
+
+- Replacing simulated light devices with physical Arduino-controlled lights
+
+- End-to-end interaction from unit client → server → physical device
+
+- Maintaining the same device registration, UI definition, and state update flow
+
+- UI improvements for the Web and Android clients
+
+Not in scope:
+
+- Role-based access control (RBAC) / permissions (planned for Iteration 4)
+
+- Advanced security (encryption, authentication improvements)
+
+- Full physical implementation of all house devices (only lights and window for now)
