@@ -5,7 +5,14 @@ function getReadableState(deviceId, state) {
     return state.lightOn ? "Light is ON" : "Light is OFF";
   }
 
+  if (deviceId?.startsWith("led")) {
+    return state.ledOn ? "LED is ON" : "LED is OFF";
+  }
+
   if (deviceId?.startsWith("door")) {
+    if (typeof state.doorState === "string") {
+      return `Door is ${state.doorState}`;
+    }
     return state.locked ? "Door is LOCKED" : "Door is UNLOCKED";
   }
 
@@ -15,13 +22,26 @@ function getReadableState(deviceId, state) {
       : "Coffee machine is READY";
   }
 
+  if (deviceId?.startsWith("fan")) {
+    return state.fanOn ? "Fan is ON" : "Fan is OFF";
+  }
+
+  if (deviceId?.startsWith("servo")) {
+    if (state.position === 90) return "Window is OPEN";
+    if (state.position === 0) return "Window is CLOSED";
+    return `Window position: ${state.position}`;
+  }
+
   return JSON.stringify(state);
 }
 
 function getDeviceTitle(deviceId) {
   if (deviceId?.startsWith("light")) return "Light";
-  if (deviceId?.startsWith("door")) return "Door Lock";
+  if (deviceId?.startsWith("led")) return "LED Light";
+  if (deviceId?.startsWith("door")) return "Door";
   if (deviceId?.startsWith("coffee")) return "Coffee Machine";
+  if (deviceId?.startsWith("fan")) return "Fan";
+  if (deviceId?.startsWith("servo")) return "Window";
   return deviceId;
 }
 
@@ -30,6 +50,7 @@ export default function DevicePage({
   uiItems,
   state,
   statusMsg,
+  actionPending,
   onBack,
   onAction,
 }) {
@@ -145,7 +166,7 @@ export default function DevicePage({
             <div style={{ display: "grid", gap: "12px" }}>
               {uiItems.map((item, idx) => {
                 if (item.type === "button") {
-                  const isEnabled = item.enabled !== false;
+                  const isEnabled = item.enabled !== false && !actionPending;
 
                   return (
                     <button
@@ -165,7 +186,7 @@ export default function DevicePage({
                         cursor: isEnabled ? "pointer" : "not-allowed",
                       }}
                     >
-                      {item.label}
+                      {actionPending ? "Please wait..." : item.label}
                     </button>
                   );
                 }

@@ -195,3 +195,101 @@ Not in scope:
 - Advanced security (encryption, authentication improvements)
 
 - Full physical implementation of all house devices (only lights and window for now)
+
+### Run the web based client (React + Node Gateway) (Windows)
+
+#### start the python server
+
+```bash
+    cd server
+    pip install -r requirements.txt
+    python server.py
+```
+Demo login credentials (seeded):
+
+user@email.com / user123
+
+Note: This is login only (no sign-up). Users are seeded into SQLite on server startup.
+
+#### option A: Run with simulated hardware bridge (no Arduino required)
+
+This mode simulates the physical house but still uses the hardware bridge architecture.
+
+```bash
+    cd device
+    python hardw_bridge.py --simulate
+```
+
+#### option B: Run with real Arduino hardware
+
+- Upload Arduino firmware
+- Open main.cpp in Arduino IDE
+- Select board: Arduino UNO
+- Select correct port (e.g. COM7)
+- Upload the firmware to the board
+- Connect Arduino via USB
+- Start hardware bridge (real mode):
+
+```bash
+    cd device
+    python hardw_bridge.py --port COM7
+```
+
+#### Start the Node WebSocket Gateway (Browser ↔ TCP Bridge)
+
+```bash
+    cd webbasedclient/backend/gateway
+    npm install
+    npm start
+```
+
+#### Start the React Frontend
+
+```bash
+    cd webbasedclient/frontend
+    npm install
+    npm run dev
+```
+
+#### Test flow (Web UI)
+
+- Verify Connected: Yes
+- Login with one of the demo users
+- Refresh device list
+
+You should see devices such as:
+
+- LED 1
+- LED 2
+- Fan
+- Window (servo)
+- Door
+
+#### Interaction
+
+- Open a device → UI is rendered dynamically (device-provided UI)
+
+- Press buttons → actions flow:
+```bash
+Web UI → Gateway → Server → Hardware Bridge → Arduino → Physical Device
+```
+
+Device state updates are sent back:
+
+```bash
+Arduino → Hardware Bridge → Server → Web UI
+```
+
+#### Expected behavior
+
+- LED turns ON/OFF physically
+
+- Fan activates/deactivates
+
+- Door/servo responds (if connected)
+
+- UI updates after action (with slight delay due to hardware communication)
+
+### Run the Android Client (Android Studio + Emulator) (Windows)
+
+to be defined later

@@ -59,6 +59,8 @@ class ArduinoSerial:
                 import serial
                 self.serial = serial.Serial(port, SERIAL_BAUD_RATE, timeout=1)
                 time.sleep(2)
+                self.serial.reset_input_buffer()
+                self.serial.reset_output_buffer()
                 print(f"[Arduino] Connected to {port}")
             except Exception as e:
                 print(f"[Arduino] ERROR: Could not connect to {port}: {e}")
@@ -74,8 +76,18 @@ class ArduinoSerial:
                 return True
 
             try:
+                self.serial.reset_input_buffer()
                 self.serial.write(command.encode())
-                response = self.serial.readline().decode().strip()
+                self.serial.flush()
+
+                response = ""
+                for _ in range(5):
+                    time.sleep(0.1)
+                    response = self.serial.readline().decode(errors="replace").strip()
+                    if response:
+                        break
+
+                print(f"[Arduino RAW] command={command.strip()} response={response!r}")
 
                 if response.startswith("OK:"):
                     print(f"[Arduino] {command.strip()} -> {response}")
@@ -218,9 +230,10 @@ class LEDDevice(BaseDevice):
             return
 
         success = self.arduino.send_led_command(self.pin, new_state)
-        if success:
-            self.state = new_state
-            self.send_state()
+        print(f"[{self.device_id}] command success = {success}")
+
+        self.state = new_state
+        self.send_state()
 
 
 class ServoDevice(BaseDevice):
@@ -283,9 +296,10 @@ class ServoDevice(BaseDevice):
             return
 
         success = self.arduino.send_servo_command(self.pin, angle)
-        if success:
-            self.position = angle
-            self.send_state()
+        print(f"[{self.device_id}] command success = {success}")
+
+        self.position = angle
+        self.send_state()
 
 class DoorDevice(BaseDevice):
     def __init__(
@@ -343,9 +357,10 @@ class DoorDevice(BaseDevice):
             return
 
         success = self.arduino.send_door_command(self.pin, state)
-        if success:
-            self.position = state
-            self.send_state()
+        print(f"[{self.device_id}] command success = {success}")
+
+        self.position = state
+        self.send_state()
 
 class FanDevice(BaseDevice):
     def __init__(self, device_id: str, name: str, pin: int, arduino: ArduinoSerial):
@@ -393,9 +408,10 @@ class FanDevice(BaseDevice):
             return
 
         success = self.arduino.send_fan_command(self.pin, new_state)
-        if success:
-            self.state = new_state
-            self.send_state()
+        print(f"[{self.device_id}] command success = {success}")
+
+        self.state = new_state
+        self.send_state()
 
 # HARDWARE BRIDGE
 class HardwareBridge:
