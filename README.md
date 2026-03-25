@@ -292,4 +292,84 @@ Arduino → Hardware Bridge → Server → Web UI
 
 ### Run the Android Client (Android Studio + Emulator) (Windows)
 
+#### start the python server
+
+```bash
+    cd server
+    pip install -r requirements.txt
+    python server.py
+```
+Demo login credentials (seeded):
+
+user@email.com / user123
+
+Note: This is login only (no sign-up). Users are seeded into SQLite on server startup.
+
+#### option A: Run with simulated hardware bridge (no Arduino required)
+
+This mode simulates the physical house but still uses the hardware bridge architecture.
+
+```bash
+    cd device
+    python hardw_bridge.py --simulate
+```
+
+#### option B: Run with real Arduino hardware
+
+- Upload Arduino firmware
+- Open main.cpp in Arduino IDE
+- Select board: Arduino UNO
+- Select correct port (e.g. COM7)
+- Upload the firmware to the board
+- Connect Arduino via USB
+- Start hardware bridge (real mode):
+
+```bash
+    cd device
+    python hardw_bridge.py --port COM7
+```
+
+#### Open the Android project in Android Studio and run the app
+
+#### Test flow (Android)
+
+- Login with one of the demo users
+- Refresh device list
+
+You should see devices such as:
+
+- LED 1
+- LED 2
+- Fan
+- Window (servo)
+- Door
+
+#### Interaction
+
+- Open a device → UI is rendered dynamically (device-provided UI)
+
+- Press buttons → actions flow:
+```bash
+Android UI → Server → Hardware Bridge → Arduino → Physical Device
+```
+
+Device state updates are sent back:
+
+```bash
+Arduino → Hardware Bridge → Server → Android UI
+```
+
+#### Expected behavior
+
+- LED turns ON/OFF physically
+
+- Fan activates/deactivates
+
+- Door/servo responds (if connected)
+
+- UI updates after action (with slight delay due to hardware communication)
+
+
+## Iteration 4 and 5 – Overview
+
 to be defined later
