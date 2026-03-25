@@ -225,6 +225,7 @@ private fun SmartControls(
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         visibleControls.forEach { control ->
+
             val disabledFromRule = control.disabledWhen?.let { rule ->
                 val value = latestState[rule.stateKey]
                 (value is Boolean) && (value == rule.equals)
@@ -232,11 +233,7 @@ private fun SmartControls(
 
             val disabledFromEnabled = control.enabled == false
 
-            val disabledForCoffee =
-                deviceTitle.contains("coffee", ignoreCase = true) &&
-                        latestState["isMaking"] == true
-
-            val disabled = disabledFromRule || disabledFromEnabled || disabledForCoffee
+            val disabled = disabledFromRule || disabledFromEnabled
 
             Button(
                 onClick = { onAction(control.action) },
@@ -259,45 +256,7 @@ private fun filteredControls(
     controls: List<Control>,
     latestState: Map<String, Any>
 ): List<Control> {
-    val t = deviceTitle.lowercase()
-
-    return when {
-        "light" in t -> {
-            val isOn = latestState["lightOn"] as? Boolean
-            when (isOn) {
-                true -> controls.filter {
-                    it.label.equals("Turn OFF", ignoreCase = true) ||
-                            it.action.equals("turn_off", ignoreCase = true)
-                }
-                false -> controls.filter {
-                    it.label.equals("Turn ON", ignoreCase = true) ||
-                            it.action.equals("turn_on", ignoreCase = true)
-                }
-                else -> controls
-            }
-        }
-
-        "door" in t || "lock" in t -> {
-            val locked = latestState["locked"] as? Boolean
-            when (locked) {
-                true -> controls.filter {
-                    it.label.equals("Unlock", ignoreCase = true) ||
-                            it.action.equals("unlock", ignoreCase = true)
-                }
-                false -> controls.filter {
-                    it.label.equals("Lock", ignoreCase = true) ||
-                            it.action.equals("lock", ignoreCase = true)
-                }
-                else -> controls
-            }
-        }
-
-        "coffee" in t -> {
-            controls
-        }
-
-        else -> controls
-    }
+    return controls
 }
 
 private fun improvedActionLabel(
@@ -305,22 +264,27 @@ private fun improvedActionLabel(
     originalLabel: String,
     latestState: Map<String, Any>
 ): String {
-    val t = deviceTitle.lowercase()
-
-    return when {
-        "coffee" in t && latestState["isMaking"] == true -> "Brewing..."
-        "coffee" in t -> "Make Coffee"
-        else -> originalLabel
-    }
+    return originalLabel
 }
 
 private fun friendlyDeviceName(rawTitle: String): String {
     val t = rawTitle.trim().lowercase()
 
     return when {
-        "coffee" in t -> "Coffee Machine"
-        "door" in t || "lock" in t -> "Door Lock"
-        "light" in t -> "Light"
+        "led" in t -> {
+            val number = t.substringAfterLast("-", "")
+            "LED Light ${number.ifEmpty { "" }}"
+        }
+
+        "fan" in t -> {
+            val number = t.substringAfterLast("-", "")
+            "Fan ${number.ifEmpty { "" }}"
+        }
+
+        "servo" in t || "window" in t -> "Window"
+
+        "door" in t -> "Door"
+
         else -> rawTitle
     }
 }
@@ -329,9 +293,10 @@ private fun deviceSubtitle(rawTitle: String): String {
     val t = rawTitle.trim().lowercase()
 
     return when {
-        "coffee" in t -> "Start your coffee anytime"
-        "door" in t || "lock" in t -> "Manage your home access"
-        "light" in t -> "Adjust your room lighting"
+        "led" in t -> "Control the room lighting"
+        "fan" in t -> "Control the fan"
+        "servo" in t || "window" in t -> "Open or close the window"
+        "door" in t -> "Control the door"
         else -> "Control your connected device"
     }
 }
@@ -340,25 +305,33 @@ private fun readableState(rawTitle: String, latestState: Map<String, Any>): Stri
     val t = rawTitle.lowercase()
 
     return when {
-        "light" in t -> when (latestState["lightOn"]) {
+        "led" in t -> when (latestState["ledOn"]) {
             true -> "On"
             false -> "Off"
-            else -> "Tap to check"
+            else -> "Unknown"
         }
 
-        "door" in t || "lock" in t -> when (latestState["locked"]) {
-            true -> "Locked"
-            false -> "Unlocked"
-            else -> "Tap to check"
+        "fan" in t -> when (latestState["fanOn"]) {
+            true -> "On"
+            false -> "Off"
+            else -> "Unknown"
         }
 
-        "coffee" in t -> when (latestState["isMaking"]) {
-            true -> "Brewing"
-            false -> "Ready"
-            else -> "Tap to check"
+        "servo" in t || "window" in t -> when (val pos = latestState["position"]) {
+            90, 90.0 -> "Open"
+            0, 0.0 -> "Closed"
+            else -> if (pos != null) pos.toString() else "Unknown"
         }
 
-        else -> "Tap to check"
+        "door" in t -> when (val doorState = latestState["doorState"]) {
+            is String -> doorState.replaceFirstChar { it.uppercase() }
+            0, 0.0 -> "Close"
+            180, 180.0 -> "Open"
+            90, 90.0 -> "Stop"
+            else -> "Unknown"
+        }
+
+        else -> "Unknown"
     }
 }
 
@@ -366,9 +339,10 @@ private fun deviceIconRes(rawTitle: String): Int {
     val t = rawTitle.lowercase()
 
     return when {
-        "light" in t -> R.drawable.lightbulb
-        "door" in t || "lock" in t -> R.drawable.door
-        "coffee" in t -> R.drawable.coffee_cup
+        "led" in t -> R.drawable.lightbulb
+        "door" in t -> R.drawable.door
+        "fan" in t -> R.drawable.fan
+        "servo" in t || "window" in t -> R.drawable.window
         else -> R.drawable.lightbulb
     }
 }
@@ -381,21 +355,6 @@ private fun LightDeviceScreenPreview() {
             title = "light-1",
             uiDefinition = null,
             latestState = mapOf("lightOn" to false),
-            error = null,
-            onBack = {},
-            onAction = {}
-        )
-    }
-}
-
-@Preview(showBackground = true, showSystemUi = true)
-@Composable
-private fun CoffeeDeviceScreenPreview() {
-    MaterialTheme {
-        DeviceScreen(
-            title = "coffee-machine-1",
-            uiDefinition = null,
-            latestState = mapOf("isMaking" to true),
             error = null,
             onBack = {},
             onAction = {}

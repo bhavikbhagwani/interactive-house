@@ -169,7 +169,7 @@ fun DeviceListScreen(
                                             verticalArrangement = Arrangement.spacedBy(6.dp)
                                         ) {
                                             Text(
-                                                text = friendlyName(device.deviceType),
+                                                text = friendlyName(device.deviceType, device.deviceId),
                                                 style = MaterialTheme.typography.titleLarge,
                                                 fontWeight = FontWeight.SemiBold,
                                                 maxLines = 1
@@ -216,10 +216,11 @@ private fun StatusChip(text: String) {
 @Composable
 private fun DeviceIcon(deviceType: String) {
     val iconRes = when {
-        deviceType.contains("light", ignoreCase = true) -> R.drawable.lightbulb
-        deviceType.contains("door", ignoreCase = true) ||
-                deviceType.contains("lock", ignoreCase = true) -> R.drawable.door
-        deviceType.contains("coffee", ignoreCase = true) -> R.drawable.coffee_cup
+        deviceType.contains("led", ignoreCase = true) -> R.drawable.lightbulb
+        deviceType.contains("door", ignoreCase = true) -> R.drawable.door
+        deviceType.contains("fan", ignoreCase = true) -> R.drawable.fan
+        deviceType.contains("servo", ignoreCase = true) ||
+                deviceType.contains("window", ignoreCase = true) -> R.drawable.window
         else -> R.drawable.lightbulb
     }
 
@@ -240,30 +241,39 @@ private fun DeviceIcon(deviceType: String) {
 }
 
 
+
 private fun readableStatus(
     deviceType: String,
     state: Map<String, Any>?
 ): String {
-    if (state == null || state.isEmpty()) return "Tap to check status"
+    if (state == null || state.isEmpty()) return "Unknown"
 
     val type = deviceType.trim().lowercase()
 
     return when {
-        "light" in type -> when (state["lightOn"]) {
+        "led" in type -> when (state["ledOn"]) {
             true -> "ON"
             false -> "OFF"
             else -> "Unknown"
         }
 
-        "door" in type || "lock" in type -> when (state["locked"]) {
-            true -> "LOCKED"
-            false -> "UNLOCKED"
+        "fan" in type -> when (state["fanOn"]) {
+            true -> "ON"
+            false -> "OFF"
             else -> "Unknown"
         }
 
-        "coffee" in type -> when (state["isMaking"]) {
-            true -> "MAKING COFFEE"
-            false -> "IDLE"
+        "servo" in type || "window" in type -> when (val pos = state["position"]) {
+            90, 90.0 -> "OPEN"
+            0, 0.0 -> "CLOSED"
+            else -> if (pos != null) pos.toString() else "Unknown"
+        }
+
+        "door" in type -> when (val doorState = state["doorState"]) {
+            is String -> doorState.uppercase()
+            0, 0.0 -> "CLOSE"
+            180, 180.0 -> "OPEN"
+            90, 90.0 -> "STOP"
             else -> "Unknown"
         }
 
@@ -271,18 +281,25 @@ private fun readableStatus(
     }
 }
 
-private fun friendlyName(deviceType: String): String {
-    val t = deviceType
-        .trim()
-        .lowercase()
-        .replace("_", "")
-        .replace("-", "")
-        .replace(" ", "")
+private fun friendlyName(deviceType: String, deviceId: String): String {
+    val type = deviceType.trim().lowercase()
+    val id = deviceId.lowercase()
 
-    return when (t) {
-        "light" -> "Light"
-        "door", "doorlock", "lock" -> "Door Lock"
-        "coffeemachine", "coffee" -> "Coffee Machine"
+    return when {
+        "led" in type -> {
+            val number = id.substringAfterLast("-", "")
+            "LED Light ${number.ifEmpty { "" }}"
+        }
+
+        "fan" in type -> {
+            val number = id.substringAfterLast("-", "")
+            "Fan ${number.ifEmpty { "" }}"
+        }
+
+        "servo" in type || "window" in type -> "Window"
+
+        "door" in type -> "Door"
+
         else -> deviceType
     }
 }

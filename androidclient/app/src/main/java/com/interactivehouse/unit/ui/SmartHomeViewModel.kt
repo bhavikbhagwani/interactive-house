@@ -53,11 +53,28 @@ class SmartHomeViewModel(private val repo: SmartHomeRepository) : ViewModel() {
 
             runCatching {
                 withContext(Dispatchers.IO) {
-                    repo.getDevices()
+                    val devs = repo.getDevices()
+
+                    val states = buildMap<String, Map<String, Any>> {
+                        for (device in devs) {
+                            runCatching {
+                                val ui = repo.getUi(device.deviceId)
+                                put(device.deviceId, ui.initialState)
+                            }
+                        }
+                    }
+
+                    devs to states
                 }
             }
-                .onSuccess { devs ->
-                    _state.update { it.copy(isLoading = false, devices = devs) }
+                .onSuccess { (devs, states) ->
+                    _state.update {
+                        it.copy(
+                            isLoading = false,
+                            devices = devs,
+                            deviceStates = states
+                        )
+                    }
                 }
                 .onFailure { e ->
                     _state.update { it.copy(isLoading = false, error = e.message) }
@@ -127,22 +144,6 @@ class SmartHomeViewModel(private val repo: SmartHomeRepository) : ViewModel() {
                         deviceStates = current.deviceStates + (device.deviceId to updatedState),
                         error = null
                     )
-                }
-
-                if (device.deviceType.contains("coffee", ignoreCase = true)) {
-                    kotlinx.coroutines.delay(35000)
-
-                    val refreshedUi = repo.getUi(device.deviceId)
-                    val refreshedState = refreshedUi.initialState
-
-                    _state.update { current ->
-                        current.copy(
-                            uiDefinition = refreshedUi,
-                            latestState = refreshedState,
-                            deviceStates = current.deviceStates + (device.deviceId to refreshedState),
-                            error = null
-                        )
-                    }
                 }
             }.onFailure { e ->
                 _state.update {

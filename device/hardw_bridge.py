@@ -337,6 +337,7 @@ class DoorDevice(BaseDevice):
             "payload": {"ui": ui}
         }
         send_json(self.sock, msg)
+        print(f"[{self.device_id}] Sent UI definition")
 
     def send_state(self):
         msg = {
@@ -345,6 +346,7 @@ class DoorDevice(BaseDevice):
             "payload": {"state": {"doorState": self.position}}
         }
         send_json(self.sock, msg)
+        print(f"[{self.device_id}] Position: {self.position}")
 
     def handle_action(self, action: str):
         if action == "OPEN":
