@@ -43,6 +43,11 @@ DOOR_DEVICES = [
     {"id": "door-1", "name": "Door", "pin": 9, "open_angle": 180, "close_angle": 0},
 ]
 
+# Motion Sensor
+MOTION_SENSOR_DEVICE = [
+    {"id": "motion-sensor-1", "name": "Motion Sensor", "pin": 2},
+]
+
 DEFAULT_SERIAL_PORT = "COM5"
 SERIAL_BAUD_RATE = 9600
 
@@ -53,6 +58,10 @@ class ArduinoSerial:
         self.simulate = simulate
         self.serial = None
         self.lock = threading.Lock()
+        # Listen to Arduino in the background
+        self.event_callback = None
+        self.reader_thread = None
+        self.reader_running = False
         
         if not simulate:
             try:
@@ -75,14 +84,8 @@ class ArduinoSerial:
 
             try:
                 self.serial.write(command.encode())
-                response = self.serial.readline().decode().strip()
-
-                if response.startswith("OK:"):
-                    print(f"[Arduino] {command.strip()} -> {response}")
-                    return True
-
-                print(f"[Arduino] Unexpected response: {response}")
-                return False
+                print(f"[Arduino TX] {command.strip()}")
+                return True
             except Exception as e:
                 print(f"[Arduino] Error sending command: {e}")
                 return False
@@ -106,8 +109,39 @@ class ArduinoSerial:
     def send_door_command(self, pin: int, state: str) -> bool:
         command = f"DOOR:{pin}:{state}\n"
         return self._send_command(command)
+    def set_event_callback(self, callback):
+        self.event_callback = callback
+
+    def start_reader(self):
+        if self.simulate or not self.serial:
+            return
+        self.reader_running = True
+        self.reader_thread = threading.Thread(target=self._reader_loop, daemon=True)
+        self.reader_thread.start()
+
+    def _reader_loop(self):
+        while self.reader_running:
+            try:
+                line = self.serial.readline().decode(errors="ignore").strip()
+                if not line:
+                    continue
+
+                print(f"[Arduino RX] {line}")
+
+                if line.startswith("MOTION:") and self.event_callback:
+                    self.event_callback(line)
+                elif line.startswith("OK:"):
+                    print(f"[Arduino OK] {line}")
+                elif line.startswith("ERR:"):
+                    print(f"[Arduino ERR] {line}")
+
+            except Exception as e:
+                print(f"[Arduino] Reader error: {e}")
+                break
     
+    # Background listening is shutdown when brige is closed.
     def close(self):
+        self.reader_running = False
         if self.serial:
             self.serial.close()
 
@@ -397,6 +431,44 @@ class FanDevice(BaseDevice):
             self.state = new_state
             self.send_state()
 
+
+class MotionSensorDevice(BaseDevice):
+    def __init__(self, device_id: str, name: str, pin: int, arduino: ArduinoSerial):
+        super().__init__(device_id, name, pin, arduino)
+        self.motion_detected = False
+
+    def send_register(self):
+        msg = {
+            "type": "register_device",
+            "sender_id": self.device_id,
+            "payload": {"deviceType": "motion_sensor"}
+        }
+        send_json(self.sock, msg)
+        print(f"[{self.device_id}] Registered as motion sensor device")
+
+    def send_ui_definition(self):
+ 
+        msg = {
+            "type": "ui_definition",
+            "sender_id": self.device_id,
+            "payload": {"ui": []}
+        }
+        send_json(self.sock, msg)
+        # print(f"[{self.device_id}] Sent UI definition")
+
+    def send_state(self):
+        msg = {
+            "type": "device_state",
+            "sender_id": self.device_id,
+            "payload": {"state": {"motionDetected": self.motion_detected}}
+        }
+        send_json(self.sock, msg)
+        print(f"[{self.device_id}] Motion: {self.motion_detected}")
+
+    def handle_action(self, action: str):
+        print(f"[{self.device_id}] Motion sensor does not support actions")
+
+
 # HARDWARE BRIDGE
 class HardwareBridge:
     def __init__(self, serial_port: str, simulate: bool = False):
@@ -443,7 +515,34 @@ class HardwareBridge:
                 arduino=self.arduino
             )
             self.devices.append(device)
-            
+        
+        for config in MOTION_SENSOR_DEVICE:
+            device = MotionSensorDevice(
+                device_id=config["id"],
+                name=config["name"],
+                pin=config["pin"],
+                arduino=self.arduino
+            )
+            self.devices.append(device)
+            self.motion_device = next(
+            (device for device in self.devices if isinstance(device, MotionSensorDevice)),
+            None
+        )
+
+        self.arduino.set_event_callback(self.handle_arduino_event)
+
+    def handle_arduino_event(self, line: str):
+        if not self.motion_device:
+            return
+
+        if line == "MOTION:1":
+            self.motion_device.motion_detected = True
+            self.motion_device.send_state()
+
+        elif line == "MOTION:0":
+            self.motion_device.motion_detected = False
+            self.motion_device.send_state()
+                        
     def start(self, host: str, port: int):
         print(f"\n{'='*50}")
         print("Hardware Bridge Starting")
@@ -456,6 +555,8 @@ class HardwareBridge:
             device.send_register()
             device.send_ui_definition()
             device.send_state()
+
+        self.arduino.start_reader()
         
         for device in self.devices:
             thread = threading.Thread(target=device.run, daemon=True)
