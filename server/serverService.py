@@ -117,6 +117,7 @@ def send_error(sock, message):
 
 # To stop malformed messages from crashing the server.
 def validate_base_message(sock, msg):
+    print("VALIDATING TYPE:", msg.get("type"))  #Just for debugging
     """Validate the basic structure of an incoming message."""
     if not isinstance(msg, dict):
         send_error(sock, "Message must be a JSON object")
@@ -139,6 +140,7 @@ def validate_base_message(sock, msg):
         return False
 
     if msg["type"] not in ALLOWED_MESSAGE_TYPES:
+        print("❌ INVALID TYPE:", msg["type"])   #Just for debugging
         send_error(sock, f"Unknown message type: {msg['type']}")
         return False
 
@@ -150,6 +152,7 @@ def validate_payload_fields(sock, msg_type, payload):
 
     for field in required_fields:
         if field not in payload:
+            print(f"❌ MISSING FIELD: {field} in {msg_type}") #just for debugging
             send_error(sock, f"Missing payload field: {field}")
             return False
 
