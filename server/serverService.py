@@ -14,7 +14,26 @@ devices = {}
 units = {}
 unit_sockets = {}
 
+# Added validation for allowed message types & required payload fields
+ALLOWED_MESSAGE_TYPES = {
+    "register_device",
+    "ui_definition",
+    "device_state",
+    "get_devices",
+    "get_ui",
+    "action",
+    "login",
+}
 
+REQUIRED_PAYLOAD_FIELDS = {
+    "register_device": ["deviceType"],
+    "ui_definition": ["ui"],
+    "device_state": ["state"],
+    "get_devices": [],
+    "get_ui": ["deviceId"],
+    "action": ["deviceId", "action"],
+    "login": ["email", "password"],
+}
 # =========================================================
 # CLIENT CONNECTION HANDLING
 # =========================================================
@@ -25,11 +44,24 @@ def handle_client(sock, addr):
     try:
         while True:
             try:
+                # new add
                 msg = recv_json_line(buffered)
                 if msg is None:
-                    print(f"Connection closed by {addr}")
+                    log_event("CONNECTION_CLOSED", str(addr))
                     break
-                client_id = handle_message(sock, msg, client_id)  #handle msg func. call
+
+                if not validate_base_message(sock, msg):
+                    log_event("INVALID_MESSAGE", str(msg))
+                    continue
+
+                client_id = handle_message(sock, msg, client_id) #handle msg func. call
+# new add end
+# ------------
+                # msg = recv_json_line(buffered)
+                # if msg is None:
+                #     print(f"Connection closed by {addr}")
+                #     break
+                # client_id = handle_message(sock, msg, client_id)  #handle msg func. call
 
             except (ConnectionResetError, BrokenPipeError, OSError) as e:
                 print(f"Client {addr} disconnected ({e})")
@@ -56,17 +88,94 @@ def handle_client(sock, addr):
         except Exception:
             pass
 
+# For Cleaner logs, easier testing/demo.
+def log_event(event, details=""):
+    """Simple server log helper."""
+    print(f"[SERVER] {event} | {details}")
 
+# If a unit/device socket dies while server sends data, your server should not crash.
+def safe_send_json(sock, msg):
+    """Safely send JSON without crashing the server."""
+    try:
+        send_json(sock, msg)
+        return True
+    except (BrokenPipeError, ConnectionResetError, OSError) as e:
+        log_event("SEND_FAILED", str(e))
+        return False
+
+def send_error(sock, message):
+    """Send error response using existing non-breaking protocol."""
+    safe_send_json(sock, {
+        "type": "error",
+        "sender_id": "server",
+        "payload": {"message": message}
+    })
+
+# =========================================================
+# For Validation
+# =========================================================
+
+# To stop malformed messages from crashing the server.
+def validate_base_message(sock, msg):
+    print("VALIDATING TYPE:", msg.get("type"))  #Just for debugging
+    """Validate the basic structure of an incoming message."""
+    if not isinstance(msg, dict):
+        send_error(sock, "Message must be a JSON object")
+        return False
+
+    if "type" not in msg:
+        send_error(sock, "Missing field: type")
+        return False
+
+    if "sender_id" not in msg:
+        send_error(sock, "Missing field: sender_id")
+        return False
+
+    if "payload" not in msg:
+        send_error(sock, "Missing field: payload")
+        return False
+
+    if not isinstance(msg["payload"], dict):
+        send_error(sock, "Payload must be an object")
+        return False
+
+    if msg["type"] not in ALLOWED_MESSAGE_TYPES:
+        print("❌ INVALID TYPE:", msg["type"])   #Just for debugging
+        send_error(sock, f"Unknown message type: {msg['type']}")
+        return False
+
+    return True
+
+def validate_payload_fields(sock, msg_type, payload):
+    """Validate required payload fields for a given message type."""
+    required_fields = REQUIRED_PAYLOAD_FIELDS.get(msg_type, [])
+
+    for field in required_fields:
+        if field not in payload:
+            print(f"❌ MISSING FIELD: {field} in {msg_type}") #just for debugging
+            send_error(sock, f"Missing payload field: {field}")
+            return False
+
+    return True
 # =========================================================
 # MESSAGE ROUTER
 # =========================================================
 
 def handle_message(sock, msg, client_id):
     """Handle incoming messages from clients."""
+    # msg_type = msg["type"]
+    # sender_id = msg["sender_id"]
+    # payload = msg["payload"]
+    # print("LOGIN PAYLOAD:", payload)
+    #  new add 
     msg_type = msg["type"]
     sender_id = msg["sender_id"]
     payload = msg["payload"]
-    print("LOGIN PAYLOAD:", payload)
+
+    if not validate_payload_fields(sock, msg_type, payload):
+        log_event("INVALID_PAYLOAD", f"type={msg_type}, payload={payload}")
+        return client_id
+    #  new add end
     if msg_type == "register_device":
         handle_register_device(sock, sender_id, payload)
     elif msg_type == "ui_definition":
@@ -81,7 +190,11 @@ def handle_message(sock, msg, client_id):
         handle_action(sock, sender_id, payload)
     elif msg_type == "login":
         handle_login_for_gui(sock, sender_id, payload)
-
+    # new add
+    else: #Extra fallback
+        send_error(sock, f"Unsupported message type: {msg_type}")
+        return client_id
+    #  new add in
     return sender_id or client_id
 
 
@@ -134,9 +247,11 @@ def handle_device_state(device_id, payload):
     # DB Save device state in DB
     save_device_state(device_id, state)
 
-    # notify units
-    for unit_sock in units.values():
-        send_json(unit_sock, {
+    # notify units - If one unit socket is dead, server should survive.
+    # Using list(units.values()) is safer while iterating.
+    # new add
+    for unit_sock in list(units.values()):
+        safe_send_json(unit_sock, {
             "type": "state_update",
             "sender_id": "server",
             "payload": {
@@ -144,6 +259,17 @@ def handle_device_state(device_id, payload):
                 "state": state
             }
         })
+        #  new add end
+    # # notify units
+    # for unit_sock in units.values():
+    #     send_json(unit_sock, {
+    #         "type": "state_update",
+    #         "sender_id": "server",
+    #         "payload": {
+    #             "deviceId": device_id,
+    #             "state": state
+    #         }
+    #     })
 
 
 def handle_get_devices(sockt):
@@ -181,22 +307,24 @@ def handle_get_ui(sock, unit_id, payload):
         # fallback to DB (device might be offline but still stored)
         result = fetch_device_ui_and_state(device_id)
         if result is None:
-            send_json(sock, {
-                "type": "error",
-                "sender_id": "server",
-                "payload": {"message": f"Unknown deviceId {device_id}"}
-            })
+            # safe_send_json(sock, {
+            #     "type": "error",
+            #     "sender_id": "server",
+            #     "payload": {"message": f"Unknown deviceId {device_id}"}
+            # })
+            # new add 1 line
+            send_error(sock, f"Unknown deviceId {device_id}")
             return
 
         ui, state = result
-        send_json(sock, {
+        safe_send_json(sock, {
             "type": "ui_definition",
             "sender_id": "server",
             "payload": {"deviceId": device_id, "ui": ui, "state": state}
         })
         return
     
-    send_json(sock, {
+    safe_send_json(sock, {
         "type": "ui_definition",
         "sender_id": "server",
         "payload": {
@@ -216,7 +344,7 @@ def handle_action(sock, unit_id, payload):
     device_id = payload["deviceId"]
     action = payload["action"]
     if device_id in devices:
-        send_json(devices[device_id]["socket"], {
+        safe_send_json(devices[device_id]["socket"], {
             "type": "action",
             "sender_id": unit_id,
             "payload": {
@@ -224,11 +352,12 @@ def handle_action(sock, unit_id, payload):
             }
         })
     else:
-        send_json(sock, {
-            "type": "error",
-            "sender_id": "server",
-            "payload": {"message": f"Device {device_id} is not connected"}
-        })
+        # send_json(sock, {
+        #     "type": "error",
+        #     "sender_id": "server",
+        #     "payload": {"message": f"Device {device_id} is not connected"}
+        # })
+        send_error(sock, f"Device {device_id} is not connected")
     return
 
 
@@ -254,11 +383,12 @@ def require_login(sock):
     If logged in, return True.
     """
     if not is_logged_in(sock):
-        send_json(sock, {
-            "type": "error",
-            "sender_id": "server",
-            "payload": {"message": "Please login first"}
-        })
+        send_error(sock, "Please login first")
+        # send_json(sock, {
+        #     "type": "error",
+        #     "sender_id": "server",
+        #     "payload": {"message": "Please login first"}
+        # })
         return False
     return True
 
@@ -269,7 +399,7 @@ def handle_login_for_gui(sock, unit_id, payload):
     password = payload.get("password")
 
     if not email or not password:
-        send_json(sock, {
+        safe_send_json(sock, {
             "type": "login_failed",
             "sender_id": "server",
             "payload": {"message": "Missing email or password"}
@@ -279,7 +409,7 @@ def handle_login_for_gui(sock, unit_id, payload):
     ok, user = verify_login(email, password)
 
     if not ok:
-        send_json(sock, {
+        safe_send_json(sock, {
             "type": "login_failed",
             "sender_id": "server",
             "payload": {"message": "Invalid email or password"}
@@ -290,7 +420,7 @@ def handle_login_for_gui(sock, unit_id, payload):
     units[user_id] = sock
     unit_sockets[sock] = user_id
 
-    send_json(sock, {
+    safe_send_json(sock, {
         "type": "login_ok",
         "sender_id": "server",
         "payload": {

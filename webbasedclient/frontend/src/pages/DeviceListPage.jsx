@@ -4,6 +4,17 @@ export default function DeviceListPage({
   onRefresh,
   onOpenDevice,
 }) {
+
+  function getDeviceTypeLabel(deviceType) {
+  if (deviceType === "light") return "Light";
+  if (deviceType === "led") return "LED Light";
+  if (deviceType === "door") return "Door";
+  if (deviceType === "coffee_machine") return "Coffee Machine";
+  if (deviceType === "fan") return "Fan";
+  if (deviceType === "servo") return "Window";
+  return deviceType;
+}
+
   return (
     <div
       style={{
@@ -97,13 +108,7 @@ export default function DeviceListPage({
                       marginBottom: "6px",
                     }}
                   >
-                    {d.deviceType === "light"
-                      ? "Light"
-                      : d.deviceType === "door"
-                      ? "Door Lock"
-                      : d.deviceType === "coffee_machine"
-                      ? "Coffee Machine"
-                      : d.deviceType}
+                    {getDeviceTypeLabel(d.deviceType)}
                   </div>
 
                   <div

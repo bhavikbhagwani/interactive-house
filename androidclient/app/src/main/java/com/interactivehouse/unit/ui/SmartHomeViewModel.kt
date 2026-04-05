@@ -53,11 +53,28 @@ class SmartHomeViewModel(private val repo: SmartHomeRepository) : ViewModel() {
 
             runCatching {
                 withContext(Dispatchers.IO) {
-                    repo.getDevices()
+                    val devs = repo.getDevices()
+
+                    val states = buildMap<String, Map<String, Any>> {
+                        for (device in devs) {
+                            runCatching {
+                                val ui = repo.getUi(device.deviceId)
+                                put(device.deviceId, ui.initialState)
+                            }
+                        }
+                    }
+
+                    devs to states
                 }
             }
-                .onSuccess { devs ->
-                    _state.update { it.copy(isLoading = false, devices = devs) }
+                .onSuccess { (devs, states) ->
+                    _state.update {
+                        it.copy(
+                            isLoading = false,
+                            devices = devs,
+                            deviceStates = states
+                        )
+                    }
                 }
                 .onFailure { e ->
                     _state.update { it.copy(isLoading = false, error = e.message) }
@@ -111,13 +128,28 @@ class SmartHomeViewModel(private val repo: SmartHomeRepository) : ViewModel() {
     }
 
     fun sendAction(action: String) {
-        val deviceId = _state.value.selectedDevice?.deviceId ?: return
+        val device = _state.value.selectedDevice ?: return
 
         viewModelScope.launch(Dispatchers.IO) {
-            runCatching { repo.sendAction(deviceId, action) }
-                .onFailure { e ->
-                    _state.update { it.copy(error = e.message ?: "error") }
+            runCatching {
+                repo.sendAction(device.deviceId, action)
+
+                val updatedUi = repo.getUi(device.deviceId)
+                val updatedState = updatedUi.initialState
+
+                _state.update { current ->
+                    current.copy(
+                        uiDefinition = updatedUi,
+                        latestState = updatedState,
+                        deviceStates = current.deviceStates + (device.deviceId to updatedState),
+                        error = null
+                    )
                 }
+            }.onFailure { e ->
+                _state.update {
+                    it.copy(error = e.message ?: "Failed to send action")
+                }
+            }
         }
     }
 

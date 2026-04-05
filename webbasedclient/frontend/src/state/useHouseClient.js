@@ -31,6 +31,8 @@ export function useHouseClient(options = {}) {
 
   const [statusMsg, setStatusMsg] = useState("");
 
+  const [actionPending, setActionPending] = useState(false);
+
   const wsRef = useRef(null);
 
   const handleMessage = (msg) => {
@@ -75,6 +77,7 @@ export function useHouseClient(options = {}) {
       }
 
       case MSG.STATE_UPDATE: {
+
         const deviceId = payload.deviceId;
         const state = payload.state || {};
 
@@ -82,11 +85,13 @@ export function useHouseClient(options = {}) {
         if (selectedDeviceId && deviceId && deviceId !== selectedDeviceId) return;
 
         setLatestState((prev) => ({ ...prev, ...state }));
+        setActionPending(false);
         setStatusMsg(`State update for ${deviceId || "device"}`);
         return;
       }
 
       case MSG.ERROR: {
+        setActionPending(false);
         setStatusMsg(`Error: ${payload.message || "Unknown error"}`);
         return;
       }
@@ -139,7 +144,8 @@ export function useHouseClient(options = {}) {
   };
 
   const sendAction = (action) => {
-    if (!selectedDeviceId) return;
+  if (!selectedDeviceId || actionPending) return;
+    setActionPending(true);
     setStatusMsg(`Sending action ${action}...`);
     wsRef.current?.send(buildAction(senderId, selectedDeviceId, action));
   };
@@ -155,6 +161,8 @@ export function useHouseClient(options = {}) {
     selectedDeviceId,
     uiItems,
     latestState,
+
+    actionPending,
 
     // actions
     login,

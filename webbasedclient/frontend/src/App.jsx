@@ -35,6 +35,7 @@ export default function App() {
       uiItems={hc.uiItems}
       state={hc.latestState}
       statusMsg={hc.statusMsg}
+      actionPending={hc.actionPending}
       onBack={hc.backToDevices}
       onAction={hc.sendAction}
     />
