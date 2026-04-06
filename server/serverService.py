@@ -71,8 +71,10 @@ def handle_client(sock, addr):
         # Remove unit by socket mapping (works even if client_id != user_id)
         if sock in unit_sockets:
             uid = unit_sockets.pop(sock)
-            print(f"Removing unit {uid}")
-            units.pop(uid, None)
+            if uid in units:
+                units[uid].discard(sock)
+                if not units[uid]:
+                    units.pop(uid)
 
         # Keep your device cleanup as-is
         if client_id and client_id in devices:
@@ -99,7 +101,7 @@ def safe_send_json(sock, msg):
     try:
         send_json(sock, msg)
         return True
-    except (BrokenPipeError, ConnectionResetError, OSError) as e:
+    except (BrokenPipeError, ConnectionResetError, OSError, AttributeError) as e:
         log_event("SEND_FAILED", str(e))
         return False
 
@@ -250,15 +252,16 @@ def handle_device_state(device_id, payload):
     # notify units - If one unit socket is dead, server should survive.
     # Using list(units.values()) is safer while iterating.
     # new add
-    for unit_sock in list(units.values()):
-        safe_send_json(unit_sock, {
-            "type": "state_update",
-            "sender_id": "server",
-            "payload": {
-                "deviceId": device_id,
-                "state": state
-            }
-        })
+    for user_sockets in list(units.values()):
+        for unit_sock in list(user_sockets):
+            safe_send_json(unit_sock, {
+                "type": "state_update",
+                "sender_id": "server",
+                "payload": {
+                    "deviceId": device_id,
+                    "state": state
+                }
+            })
         #  new add end
     # # notify units
     # for unit_sock in units.values():
@@ -368,13 +371,13 @@ def handle_action(sock, unit_id, payload):
 
 def handle_login(sock, unit_id, payload):
     """Handle the login request from a unit and associate it with a socket."""
-    units[unit_id] = sock
-
+    units.setdefault(unit_id, set()).add(sock)
+    unit_sockets[sock] = unit_id
 
 def is_logged_in(sock):
     """To check if user is logged in, returns True or False 
     based on store unit socket in units dict using userId as key"""
-    return sock in units.values()
+    return sock in unit_sockets
 
 
 def require_login(sock):
@@ -417,7 +420,7 @@ def handle_login_for_gui(sock, unit_id, payload):
         return
 
     user_id = str(user["userId"])
-    units[user_id] = sock
+    units.setdefault(user_id, set()).add(sock)
     unit_sockets[sock] = user_id
 
     safe_send_json(sock, {
