@@ -20,6 +20,10 @@ const int doorOpenAngle = 180;
 const int doorCloseAngle = 0;    
 const int doorStopAngle = 90; 
 
+// Sending motion sensor state
+const int motionSensorPin = 2;
+int lastMotionState = LOW;
+
 //servo objects
 Servo win;
 Servo door;
@@ -48,6 +52,9 @@ void setFanState(bool on) {
 }
 
 void setup() {
+  // Motion Sensor
+  pinMode(motionSensorPin, INPUT);
+
   //fan
   pinMode(fanPin, OUTPUT);
   setFanState(false);
@@ -82,6 +89,21 @@ void loop() {
       inputBuffer += incoming;
     }
   }
+
+  // Added Motion Sensor
+  int motionState = digitalRead(motionSensorPin);
+
+  if (motionState != lastMotionState) {
+    lastMotionState = motionState;
+
+    if (motionState == HIGH) {
+      Serial.println("MOTION:1");
+    } else {
+      Serial.println("MOTION:0");
+    }
+  }
+
+  delay(100);
 }
 
 bool isSupportedPin(int pin) {
@@ -206,4 +228,5 @@ void handleCommand(const String& command) {
   }
 
   Serial.println("ERR:UNKNOWN_DEVICE");
+
 }
