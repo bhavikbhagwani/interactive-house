@@ -1,27 +1,31 @@
 function getReadableState(deviceId, state) {
   if (!state) return "Unknown";
 
-  if (deviceId?.startsWith("light") || deviceId?.startsWith("led")) {
+  if (deviceId?.startsWith("led")) {
+    return state.ledOn ?? state.lightOn ? "LED is ON" : "LED is OFF";
+  }
+
+  if (deviceId?.startsWith("light")) {
     return state.lightOn ? "Light is ON" : "Light is OFF";
   }
 
   if (deviceId?.startsWith("door")) {
+    if (typeof state.doorState === "string") return `Door is ${state.doorState}`;
     return state.locked ? "Door is LOCKED" : "Door is UNLOCKED";
   }
 
   if (deviceId?.startsWith("coffee")) {
-    return state.isMaking
-      ? "Coffee machine is MAKING coffee"
-      : "Coffee machine is READY";
+    return state.isMaking ? "Coffee machine is MAKING coffee" : "Coffee machine is READY";
   }
 
   if (deviceId?.startsWith("fan")) {
     return state.fanOn ? "Fan is ON" : "Fan is OFF";
   }
 
-  if (deviceId?.startsWith("window") || deviceId?.startsWith("servo")) {
-    if (state.open === true) return "Window is OPEN";
-    if (state.open === false) return "Window is CLOSED";
+  if (deviceId?.startsWith("servo") || deviceId?.startsWith("window")) {
+    if (state.position === 90 || state.open === true) return "Window is OPEN";
+    if (state.position === 0 || state.open === false) return "Window is CLOSED";
+    if (state.position !== undefined) return `Window position: ${state.position}`;
     return JSON.stringify(state);
   }
 
@@ -33,12 +37,11 @@ function getReadableState(deviceId, state) {
     return state.smokeDetected ? "Smoke detected" : "No smoke detected";
   }
 
- if (deviceId?.startsWith("temp") || deviceId?.startsWith("temperature")) {
-  if (state.temperature !== undefined) {
-    return `Temperature: ${state.temperature}°C`;
+  if (deviceId?.startsWith("temp") || deviceId?.startsWith("temperature")) {
+    return state.temperature !== undefined
+      ? `Temperature: ${state.temperature}°C`
+      : "No temperature data";
   }
-  return "No temperature data";
-}
 
   if (deviceId?.startsWith("alarm") || deviceId?.startsWith("buzzer")) {
     if (state.alarmOn === true) return "Alarm is ON";
@@ -48,25 +51,27 @@ function getReadableState(deviceId, state) {
 
   return JSON.stringify(state);
 }
+
 function getDeviceTitle(deviceId) {
-  if (deviceId?.startsWith("light") || deviceId?.startsWith("led")) return "Light";
+  if (deviceId?.startsWith("led")) return "LED Light";
+  if (deviceId?.startsWith("light")) return "Light";
   if (deviceId?.startsWith("door")) return "Door Lock";
   if (deviceId?.startsWith("coffee")) return "Coffee Machine";
   if (deviceId?.startsWith("fan")) return "Fan";
-  if (deviceId?.startsWith("window") || deviceId?.startsWith("servo")) return "Window";
+  if (deviceId?.startsWith("servo") || deviceId?.startsWith("window")) return "Window";
   if (deviceId?.startsWith("motion")) return "Motion Sensor";
   if (deviceId?.startsWith("smoke")) return "Smoke Sensor";
-  if (deviceId?.startsWith("temp")) return "Temperature Sensor";
+  if (deviceId?.startsWith("temp") || deviceId?.startsWith("temperature")) return "Temperature Sensor";
   if (deviceId?.startsWith("alarm") || deviceId?.startsWith("buzzer")) return "Alarm";
   return deviceId;
 }
-
 
 export default function DevicePage({
   deviceId,
   uiItems,
   state,
   statusMsg,
+  actionPending,
   onBack,
   onAction,
 }) {
@@ -182,7 +187,7 @@ export default function DevicePage({
             <div style={{ display: "grid", gap: "12px" }}>
               {uiItems.map((item, idx) => {
                 if (item.type === "button") {
-                  const isEnabled = item.enabled !== false;
+                  const isEnabled = item.enabled !== false && !actionPending;
 
                   return (
                     <button
@@ -202,7 +207,7 @@ export default function DevicePage({
                         cursor: isEnabled ? "pointer" : "not-allowed",
                       }}
                     >
-                      {item.label}
+                      {actionPending ? "Please wait..." : item.label}
                     </button>
                   );
                 }

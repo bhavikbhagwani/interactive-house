@@ -36,7 +36,7 @@ fun AppRoot(vm: SmartHomeViewModel) {
             val selected = state.selectedDevice ?: return
 
             DeviceScreen(
-                title = state.uiDefinition?.title ?: selected.deviceType,
+                title = selected.deviceId,
                 uiDefinition = state.uiDefinition,
                 latestState = state.latestState,
                 error = state.error,
