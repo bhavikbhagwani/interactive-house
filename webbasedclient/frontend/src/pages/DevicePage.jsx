@@ -1,7 +1,7 @@
 function getReadableState(deviceId, state) {
   if (!state) return "Unknown";
 
-  if (deviceId?.startsWith("light")) {
+  if (deviceId?.startsWith("light") || deviceId?.startsWith("led")) {
     return state.lightOn ? "Light is ON" : "Light is OFF";
   }
 
@@ -15,15 +15,52 @@ function getReadableState(deviceId, state) {
       : "Coffee machine is READY";
   }
 
-  return JSON.stringify(state);
+  if (deviceId?.startsWith("fan")) {
+    return state.fanOn ? "Fan is ON" : "Fan is OFF";
+  }
+
+  if (deviceId?.startsWith("window") || deviceId?.startsWith("servo")) {
+    if (state.open === true) return "Window is OPEN";
+    if (state.open === false) return "Window is CLOSED";
+    return JSON.stringify(state);
+  }
+
+  if (deviceId?.startsWith("motion")) {
+    return state.motionDetected ? "Motion detected" : "No motion detected";
+  }
+
+  if (deviceId?.startsWith("smoke")) {
+    return state.smokeDetected ? "Smoke detected" : "No smoke detected";
+  }
+
+ if (deviceId?.startsWith("temp") || deviceId?.startsWith("temperature")) {
+  if (state.temperature !== undefined) {
+    return `Temperature: ${state.temperature}°C`;
+  }
+  return "No temperature data";
 }
 
+  if (deviceId?.startsWith("alarm") || deviceId?.startsWith("buzzer")) {
+    if (state.alarmOn === true) return "Alarm is ON";
+    if (state.alarmOn === false) return "Alarm is OFF";
+    return JSON.stringify(state);
+  }
+
+  return JSON.stringify(state);
+}
 function getDeviceTitle(deviceId) {
-  if (deviceId?.startsWith("light")) return "Light";
+  if (deviceId?.startsWith("light") || deviceId?.startsWith("led")) return "Light";
   if (deviceId?.startsWith("door")) return "Door Lock";
   if (deviceId?.startsWith("coffee")) return "Coffee Machine";
+  if (deviceId?.startsWith("fan")) return "Fan";
+  if (deviceId?.startsWith("window") || deviceId?.startsWith("servo")) return "Window";
+  if (deviceId?.startsWith("motion")) return "Motion Sensor";
+  if (deviceId?.startsWith("smoke")) return "Smoke Sensor";
+  if (deviceId?.startsWith("temp")) return "Temperature Sensor";
+  if (deviceId?.startsWith("alarm") || deviceId?.startsWith("buzzer")) return "Alarm";
   return deviceId;
 }
+
 
 export default function DevicePage({
   deviceId,

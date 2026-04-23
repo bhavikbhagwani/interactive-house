@@ -1,3 +1,46 @@
+function getDeviceTypeLabel(device) {
+  const type = device.deviceType || "";
+  const id = device.deviceId || "";
+
+  if (type === "light" || id.startsWith("light") || id.startsWith("led")) {
+    return "Light";
+  }
+
+  if (type === "door" || type === "door_lock" || id.startsWith("door")) {
+    return "Door Lock";
+  }
+
+  if (type === "coffee_machine" || id.startsWith("coffee")) {
+    return "Coffee Machine";
+  }
+
+  if (type === "fan" || id.startsWith("fan")) {
+    return "Fan";
+  }
+
+  if (type === "window" || type === "servo" || id.startsWith("window") || id.startsWith("servo")) {
+    return "Window";
+  }
+
+  if (type === "motion_sensor" || id.startsWith("motion")) {
+    return "Motion Sensor";
+  }
+
+  if (type === "smoke_sensor" || id.startsWith("smoke")) {
+    return "Smoke Sensor";
+  }
+
+  if (type === "temperature_sensor" || id.startsWith("temp")) {
+    return "Temperature Sensor";
+  }
+
+  if (type === "alarm" || id.startsWith("alarm") || id.startsWith("buzzer")) {
+    return "Alarm";
+  }
+
+  return type || "Unknown Device";
+}
+
 export default function DeviceListPage({
   devices,
   statusMsg,
@@ -97,15 +140,8 @@ export default function DeviceListPage({
                       marginBottom: "6px",
                     }}
                   >
-                    {d.deviceType === "light"
-                      ? "Light"
-                      : d.deviceType === "door"
-                      ? "Door Lock"
-                      : d.deviceType === "coffee_machine"
-                      ? "Coffee Machine"
-                      : d.deviceType}
+                    {getDeviceTypeLabel(d)}
                   </div>
-
                   <div
                     style={{
                       fontSize: "14px",
