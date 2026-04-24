@@ -10,4 +10,7 @@ interface SmartHomeRepository {
     suspend fun getUi(deviceId: String): UiDefinition
     fun stateUpdates(deviceId: String): Flow<Map<String, Any>>
     suspend fun sendAction(deviceId: String, action: String)
+
+    suspend fun triggerScene(sceneId: String)
+    suspend fun sendVoiceCommand(text: String)
 }
