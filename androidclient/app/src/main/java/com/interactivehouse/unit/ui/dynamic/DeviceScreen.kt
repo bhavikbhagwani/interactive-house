@@ -271,19 +271,19 @@ private fun friendlyDeviceName(rawTitle: String): String {
     val t = rawTitle.trim().lowercase()
 
     return when {
-        "led" in t -> {
+        "led" in t || "light" in t -> {
             val number = t.substringAfterLast("-", "")
-            "LED Light ${number.ifEmpty { "" }}"
+            if (number.isNotEmpty()) "Light $number" else "Light"
         }
 
         "fan" in t -> {
             val number = t.substringAfterLast("-", "")
-            "Fan ${number.ifEmpty { "" }}"
+            if (number.isNotEmpty()) "Fan $number" else "Fan"
         }
 
         "servo" in t || "window" in t -> "Window"
-
-        "door" in t -> "Door"
+        "door" in t || "lock" in t -> "Door Lock"
+        "coffee" in t -> "Coffee Machine"
 
         else -> rawTitle
     }
@@ -293,10 +293,11 @@ private fun deviceSubtitle(rawTitle: String): String {
     val t = rawTitle.trim().lowercase()
 
     return when {
-        "led" in t -> "Control the room lighting"
+        "led" in t || "light" in t -> "Adjust your room lighting"
         "fan" in t -> "Control the fan"
         "servo" in t || "window" in t -> "Open or close the window"
-        "door" in t -> "Control the door"
+        "door" in t || "lock" in t -> "Manage your home access"
+        "coffee" in t -> "Start your coffee anytime"
         else -> "Control your connected device"
     }
 }
@@ -305,15 +306,15 @@ private fun readableState(rawTitle: String, latestState: Map<String, Any>): Stri
     val t = rawTitle.lowercase()
 
     return when {
-        "led" in t -> when (latestState["ledOn"]) {
-            true -> "On"
-            false -> "Off"
+        "led" in t || "light" in t -> when {
+            latestState["ledOn"] == true || latestState["lightOn"] == true -> "On"
+            latestState["ledOn"] == false || latestState["lightOn"] == false -> "Off"
             else -> "Unknown"
         }
 
-        "fan" in t -> when (latestState["fanOn"]) {
-            true -> "On"
-            false -> "Off"
+        "fan" in t -> when {
+            latestState["fanOn"] == true -> "On"
+            latestState["fanOn"] == false -> "Off"
             else -> "Unknown"
         }
 
@@ -323,11 +324,23 @@ private fun readableState(rawTitle: String, latestState: Map<String, Any>): Stri
             else -> if (pos != null) pos.toString() else "Unknown"
         }
 
-        "door" in t -> when (val doorState = latestState["doorState"]) {
-            is String -> doorState.replaceFirstChar { it.uppercase() }
-            0, 0.0 -> "Close"
-            180, 180.0 -> "Open"
-            90, 90.0 -> "Stop"
+        "door" in t || "lock" in t -> when {
+            latestState["locked"] == true -> "Locked"
+            latestState["locked"] == false -> "Unlocked"
+
+            latestState["doorState"] is String ->
+                (latestState["doorState"] as String).replaceFirstChar { it.uppercase() }
+
+            latestState["doorState"] == 0 || latestState["doorState"] == 0.0 -> "Close"
+            latestState["doorState"] == 180 || latestState["doorState"] == 180.0 -> "Open"
+            latestState["doorState"] == 90 || latestState["doorState"] == 90.0 -> "Stop"
+
+            else -> "Unknown"
+        }
+
+        "coffee" in t -> when {
+            latestState["isMaking"] == true -> "Brewing"
+            latestState["isMaking"] == false -> "Ready"
             else -> "Unknown"
         }
 
@@ -339,10 +352,11 @@ private fun deviceIconRes(rawTitle: String): Int {
     val t = rawTitle.lowercase()
 
     return when {
-        "led" in t -> R.drawable.lightbulb
-        "door" in t -> R.drawable.door
+        "led" in t || "light" in t -> R.drawable.lightbulb
+        "door" in t || "lock" in t -> R.drawable.door
         "fan" in t -> R.drawable.fan
         "servo" in t || "window" in t -> R.drawable.window
+        "coffee" in t -> R.drawable.coffee_cup
         else -> R.drawable.lightbulb
     }
 }

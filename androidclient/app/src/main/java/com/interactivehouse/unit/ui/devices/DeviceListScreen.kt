@@ -216,28 +216,27 @@ private fun StatusChip(text: String) {
 @Composable
 private fun DeviceIcon(deviceType: String) {
     val iconRes = when {
-        deviceType.contains("led", ignoreCase = true) -> R.drawable.lightbulb
-        deviceType.contains("door", ignoreCase = true) -> R.drawable.door
+        deviceType.contains("led", ignoreCase = true) ||
+                deviceType.contains("light", ignoreCase = true) -> R.drawable.lightbulb
+
+        deviceType.contains("door", ignoreCase = true) ||
+                deviceType.contains("lock", ignoreCase = true) -> R.drawable.door
+
         deviceType.contains("fan", ignoreCase = true) -> R.drawable.fan
+
         deviceType.contains("servo", ignoreCase = true) ||
                 deviceType.contains("window", ignoreCase = true) -> R.drawable.window
+
+        deviceType.contains("coffee", ignoreCase = true) -> R.drawable.coffee_cup
+
         else -> R.drawable.lightbulb
     }
 
-    Box(
-        modifier = Modifier
-            .size(52.dp)
-            .clip(RoundedCornerShape(16.dp))
-            .background(Color(0xFFDCE6FF)),
-        contentAlignment = Alignment.Center
-    ) {
-        Image(
-            painter = painterResource(id = iconRes),
-            contentDescription = null,
-            modifier = Modifier.size(26.dp),
-            colorFilter = ColorFilter.tint(Color(0xFF1F2A5A))
-        )
-    }
+    Image(
+        painter = painterResource(id = iconRes),
+        contentDescription = deviceType,
+        modifier = Modifier.size(28.dp)
+    )
 }
 
 
@@ -251,15 +250,15 @@ private fun readableStatus(
     val type = deviceType.trim().lowercase()
 
     return when {
-        "led" in type -> when (state["ledOn"]) {
-            true -> "ON"
-            false -> "OFF"
+        "led" in type || "light" in type -> when {
+            state["ledOn"] == true || state["lightOn"] == true -> "ON"
+            state["ledOn"] == false || state["lightOn"] == false -> "OFF"
             else -> "Unknown"
         }
 
-        "fan" in type -> when (state["fanOn"]) {
-            true -> "ON"
-            false -> "OFF"
+        "fan" in type -> when {
+            state["fanOn"] == true -> "ON"
+            state["fanOn"] == false -> "OFF"
             else -> "Unknown"
         }
 
@@ -269,11 +268,21 @@ private fun readableStatus(
             else -> if (pos != null) pos.toString() else "Unknown"
         }
 
-        "door" in type -> when (val doorState = state["doorState"]) {
-            is String -> doorState.uppercase()
-            0, 0.0 -> "CLOSE"
-            180, 180.0 -> "OPEN"
-            90, 90.0 -> "STOP"
+        "door" in type || "lock" in type -> when {
+            state["locked"] == true -> "LOCKED"
+            state["locked"] == false -> "UNLOCKED"
+
+            state["doorState"] is String -> (state["doorState"] as String).uppercase()
+            state["doorState"] == 0 || state["doorState"] == 0.0 -> "CLOSE"
+            state["doorState"] == 180 || state["doorState"] == 180.0 -> "OPEN"
+            state["doorState"] == 90 || state["doorState"] == 90.0 -> "STOP"
+
+            else -> "Unknown"
+        }
+
+        "coffee" in type -> when {
+            state["isMaking"] == true -> "MAKING COFFEE"
+            state["isMaking"] == false -> "IDLE"
             else -> "Unknown"
         }
 
@@ -286,19 +295,19 @@ private fun friendlyName(deviceType: String, deviceId: String): String {
     val id = deviceId.lowercase()
 
     return when {
-        "led" in type -> {
+        "led" in type || "light" in type -> {
             val number = id.substringAfterLast("-", "")
-            "LED Light ${number.ifEmpty { "" }}"
+            if (number.isNotEmpty()) "Light $number" else "Light"
         }
 
         "fan" in type -> {
             val number = id.substringAfterLast("-", "")
-            "Fan ${number.ifEmpty { "" }}"
+            if (number.isNotEmpty()) "Fan $number" else "Fan"
         }
 
         "servo" in type || "window" in type -> "Window"
-
-        "door" in type -> "Door"
+        "door" in type || "lock" in type -> "Door Lock"
+        "coffee" in type -> "Coffee Machine"
 
         else -> deviceType
     }
