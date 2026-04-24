@@ -33,9 +33,7 @@ fun DeviceScreen(
     val statusText = readableState(title, latestState)
     val iconRes = deviceIconRes(title)
 
-    Box(
-        modifier = Modifier.fillMaxSize()
-    ) {
+    Box(modifier = Modifier.fillMaxSize()) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -51,9 +49,7 @@ fun DeviceScreen(
                 )
         )
 
-        Column(
-            modifier = Modifier.fillMaxSize()
-        ) {
+        Column(modifier = Modifier.fillMaxSize()) {
             Spacer(modifier = Modifier.height(28.dp))
 
             Row(
@@ -63,9 +59,7 @@ fun DeviceScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.Top
             ) {
-                Column(
-                    horizontalAlignment = Alignment.Start
-                ) {
+                Column(horizontalAlignment = Alignment.Start) {
                     Box(
                         modifier = Modifier
                             .size(64.dp)
@@ -193,19 +187,62 @@ fun DeviceScreen(
                     Spacer(modifier = Modifier.height(22.dp))
 
                     Text(
-                        text = "Available Actions",
+                        text = if (uiDefinition.controls.isEmpty()) {
+                            "Sensor Information"
+                        } else {
+                            "Available Actions"
+                        },
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold
                     )
 
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    SmartControls(
-                        deviceTitle = title,
-                        controls = uiDefinition.controls,
-                        latestState = latestState,
-                        onAction = onAction
+                    if (uiDefinition.controls.isEmpty()) {
+                        SensorStateDetails(latestState)
+                    } else {
+                        SmartControls(
+                            deviceTitle = title,
+                            controls = uiDefinition.controls,
+                            latestState = latestState,
+                            onAction = onAction
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SensorStateDetails(latestState: Map<String, Any>) {
+    if (latestState.isEmpty()) {
+        Text(
+            text = "No state information available.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        return
+    }
+
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        latestState.forEach { (key, value) ->
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(14.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(14.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = key,
+                        fontWeight = FontWeight.SemiBold
                     )
+
+                    Text(text = value.toString())
                 }
             }
         }
@@ -221,9 +258,7 @@ private fun SmartControls(
 ) {
     val visibleControls = filteredControls(deviceTitle, controls, latestState)
 
-    Column(
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         visibleControls.forEach { control ->
 
             val disabledFromRule = control.disabledWhen?.let { rule ->
@@ -232,7 +267,6 @@ private fun SmartControls(
             } ?: false
 
             val disabledFromEnabled = control.enabled == false
-
             val disabled = disabledFromRule || disabledFromEnabled
 
             Button(
@@ -251,6 +285,7 @@ private fun SmartControls(
         }
     }
 }
+
 private fun filteredControls(
     deviceTitle: String,
     controls: List<Control>,
@@ -271,19 +306,23 @@ private fun friendlyDeviceName(rawTitle: String): String {
     val t = rawTitle.trim().lowercase()
 
     return when {
-        "led" in t -> {
+        "led" in t || "light" in t -> {
             val number = t.substringAfterLast("-", "")
-            "LED Light ${number.ifEmpty { "" }}"
+            if (number.isNotEmpty()) "Light $number" else "Light"
         }
 
         "fan" in t -> {
             val number = t.substringAfterLast("-", "")
-            "Fan ${number.ifEmpty { "" }}"
+            if (number.isNotEmpty()) "Fan $number" else "Fan"
         }
 
         "servo" in t || "window" in t -> "Window"
-
-        "door" in t -> "Door"
+        "door" in t || "lock" in t -> "Door Lock"
+        "coffee" in t -> "Coffee Machine"
+        "motion" in t -> "Motion Sensor"
+        "smoke" in t -> "Smoke Sensor"
+        "temp" in t || "temperature" in t -> "Temperature Sensor"
+        "alarm" in t || "buzzer" in t -> "Alarm"
 
         else -> rawTitle
     }
@@ -293,10 +332,16 @@ private fun deviceSubtitle(rawTitle: String): String {
     val t = rawTitle.trim().lowercase()
 
     return when {
-        "led" in t -> "Control the room lighting"
+        "led" in t || "light" in t -> "Adjust your room lighting"
         "fan" in t -> "Control the fan"
         "servo" in t || "window" in t -> "Open or close the window"
-        "door" in t -> "Control the door"
+        "door" in t || "lock" in t -> "Manage your home access"
+        "coffee" in t -> "Start your coffee anytime"
+        "motion" in t -> "Monitor room movement"
+        "smoke" in t -> "Monitor smoke detection"
+        "temp" in t || "temperature" in t -> "Monitor room temperature"
+        "alarm" in t || "buzzer" in t -> "Monitor or control alarm status"
+
         else -> "Control your connected device"
     }
 }
@@ -305,15 +350,15 @@ private fun readableState(rawTitle: String, latestState: Map<String, Any>): Stri
     val t = rawTitle.lowercase()
 
     return when {
-        "led" in t -> when (latestState["ledOn"]) {
-            true -> "On"
-            false -> "Off"
+        "led" in t || "light" in t -> when {
+            latestState["ledOn"] == true || latestState["lightOn"] == true -> "On"
+            latestState["ledOn"] == false || latestState["lightOn"] == false -> "Off"
             else -> "Unknown"
         }
 
-        "fan" in t -> when (latestState["fanOn"]) {
-            true -> "On"
-            false -> "Off"
+        "fan" in t -> when {
+            latestState["fanOn"] == true -> "On"
+            latestState["fanOn"] == false -> "Off"
             else -> "Unknown"
         }
 
@@ -323,11 +368,46 @@ private fun readableState(rawTitle: String, latestState: Map<String, Any>): Stri
             else -> if (pos != null) pos.toString() else "Unknown"
         }
 
-        "door" in t -> when (val doorState = latestState["doorState"]) {
-            is String -> doorState.replaceFirstChar { it.uppercase() }
-            0, 0.0 -> "Close"
-            180, 180.0 -> "Open"
-            90, 90.0 -> "Stop"
+        "door" in t || "lock" in t -> when {
+            latestState["locked"] == true -> "Locked"
+            latestState["locked"] == false -> "Unlocked"
+
+            latestState["doorState"] is String ->
+                (latestState["doorState"] as String).replaceFirstChar { it.uppercase() }
+
+            latestState["doorState"] == 0 || latestState["doorState"] == 0.0 -> "Close"
+            latestState["doorState"] == 180 || latestState["doorState"] == 180.0 -> "Open"
+            latestState["doorState"] == 90 || latestState["doorState"] == 90.0 -> "Stop"
+
+            else -> "Unknown"
+        }
+
+        "coffee" in t -> when {
+            latestState["isMaking"] == true -> "Brewing"
+            latestState["isMaking"] == false -> "Ready"
+            else -> "Unknown"
+        }
+
+        "motion" in t -> when {
+            latestState["motionDetected"] == true -> "Motion Detected"
+            latestState["motionDetected"] == false -> "No Motion"
+            else -> "Unknown"
+        }
+
+        "smoke" in t -> when {
+            latestState["smokeDetected"] == true -> "Smoke Detected"
+            latestState["smokeDetected"] == false -> "Clear"
+            else -> "Unknown"
+        }
+
+        "temp" in t || "temperature" in t -> {
+            val temp = latestState["temperature"]
+            if (temp != null) "$temp °C" else "Unknown"
+        }
+
+        "alarm" in t || "buzzer" in t -> when {
+            latestState["alarmOn"] == true -> "On"
+            latestState["alarmOn"] == false -> "Off"
             else -> "Unknown"
         }
 
@@ -339,10 +419,19 @@ private fun deviceIconRes(rawTitle: String): Int {
     val t = rawTitle.lowercase()
 
     return when {
-        "led" in t -> R.drawable.lightbulb
-        "door" in t -> R.drawable.door
-        "fan" in t -> R.drawable.fan
-        "servo" in t || "window" in t -> R.drawable.window
+        "led" in t || "light" in t -> R.drawable.lightbulb
+        "door" in t || "lock" in t -> R.drawable.door
+        "coffee" in t -> R.drawable.coffee_cup
+
+        // Safe fallback icons because fan/window drawables caused build errors
+        "fan" in t -> R.drawable.lightbulb
+        "servo" in t || "window" in t -> R.drawable.lightbulb
+
+        "motion" in t -> R.drawable.lightbulb
+        "smoke" in t -> R.drawable.lightbulb
+        "temp" in t || "temperature" in t -> R.drawable.lightbulb
+        "alarm" in t || "buzzer" in t -> R.drawable.lightbulb
+
         else -> R.drawable.lightbulb
     }
 }
