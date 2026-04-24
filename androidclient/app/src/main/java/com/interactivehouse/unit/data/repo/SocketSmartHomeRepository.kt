@@ -309,6 +309,20 @@ class SocketSmartHomeRepository(
         send(baseMessage("action", payload))
     }
 
+    override suspend fun triggerScene(sceneId: String) {
+        val payload = JSONObject()
+            .put("sceneId", sceneId)
+
+        send(baseMessage("trigger_scene", payload))
+    }
+
+    override suspend fun sendVoiceCommand(text: String) {
+        val payload = JSONObject()
+            .put("text", text)
+
+        send(baseMessage("voice_command", payload))
+    }
+
     private fun jsonObjectToMap(obj: JSONObject): Map<String, Any> {
         val map = mutableMapOf<String, Any>()
         val keys = obj.keys()
