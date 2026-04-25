@@ -11,7 +11,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import com.interactivehouse.unit.ui.voice.VoiceCommandProcessor
+//import com.interactivehouse.unit.ui.voice.VoiceCommandProcessor
 
 
 data class UiState(
@@ -38,7 +38,7 @@ class SmartHomeViewModel(private val repo: SmartHomeRepository) : ViewModel() {
     private var updatesJob: Job? = null
 
 
-    private val voiceProcessor = VoiceCommandProcessor()
+    //private val voiceProcessor = VoiceCommandProcessor()
 
 
     fun login(email: String, password: String) {
@@ -216,77 +216,22 @@ class SmartHomeViewModel(private val repo: SmartHomeRepository) : ViewModel() {
     fun sendVoiceCommand(text: String) {
         if (text.isBlank()) return
 
+        viewModelScope.launch(Dispatchers.IO) {
+            runCatching {
+                repo.sendVoiceCommand(text)
 
-        val devices = _state.value.devices
-
-
-        voiceProcessor.process(
-            text = text,
-            devices = devices,
-
-
-            onScene = { sceneId ->
-                viewModelScope.launch(Dispatchers.IO) {
-                    runCatching {
-                        repo.triggerScene(sceneId)
-
-
-                        _state.update {
-                            it.copy(
-                                statusMessage = "Scene: $sceneId",
-                                error = null
-                            )
-                        }
-
-
-                        loadDevices()
-                    }.onFailure { e ->
-                        _state.update {
-                            it.copy(error = e.message ?: "Failed to trigger scene")
-                        }
-                    }
-                }
-            },
-
-
-            onDeviceAction = { deviceId, action ->
-                viewModelScope.launch(Dispatchers.IO) {
-                    runCatching {
-                        repo.sendAction(deviceId, action)
-
-
-                        // Fetch latest UI/state again after action
-                        val updatedUi = repo.getUi(deviceId)
-                        val updatedState = updatedUi.initialState
-
-
-                        _state.update { current ->
-                            current.copy(
-                                deviceStates = current.deviceStates + (deviceId to updatedState),
-                                latestState = if (current.selectedDevice?.deviceId == deviceId) {
-                                    updatedState
-                                } else {
-                                    current.latestState
-                                },
-                                error = null,
-                                statusMessage = "Voice: $action → $deviceId"
-                            )
-                        }
-                    }.onFailure { e ->
-                        _state.update {
-                            it.copy(error = e.message ?: "Failed to send voice action")
-                        }
-                    }
-                }
-            },
-
-
-            onError = { msg ->
                 _state.update {
-                    it.copy(error = msg)
+                    it.copy(
+                        error = null,
+                        statusMessage = "Voice command sent: $text"
+                    )
+                }
+            }.onFailure { e ->
+                _state.update {
+                    it.copy(error = e.message ?: "Failed to send voice command")
                 }
             }
-        )
+        }
     }
 
 
