@@ -46,6 +46,10 @@ class SocketSmartHomeRepository(
     private var readJob: Job? = null
 
     private val stateFlows = ConcurrentHashMap<String, MutableSharedFlow<Map<String, Any>>>()
+
+    private val _errors = MutableSharedFlow<String>(replay = 0)
+    val errors: Flow<String> = _errors.asSharedFlow()
+
     private fun flowFor(deviceId: String) =
         stateFlows.getOrPut(deviceId) { MutableSharedFlow(replay = 1) }
 
@@ -147,6 +151,16 @@ class SocketSmartHomeRepository(
 
                 when (type) {
                     "state_update", "device_state" -> handleStateUpdate(msg)
+
+                    "error" -> {
+                        val message = msg.optJSONObject("payload")
+                            ?.optString("message")
+                            ?: "Unknown server error"
+
+                        _errors.emit(message)
+                        pending[type]?.complete(msg)
+                    }
+
                     else -> pending[type]?.complete(msg)
                 }
             }
