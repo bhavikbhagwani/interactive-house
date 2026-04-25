@@ -1,0 +1,151 @@
+Test run 2026-04-25T18:40:31Z (python /Users/sham_sara/miniforge3/bin/python)
+Total wall time (s): 0.2436
+
+
+========================================================================
+tests/test_scenes/test_scenes_extended.py
+========================================================================
+Running extended Scenes tests...
+
+[PASS] get_scene returns device_states after create_scene
+   Details: {'got': {'name': 'alpha', 'device_states': {'d1': {'x': 1}}}}
+[PASS] get_history records each trigger_scene in order
+   Details: {'history': ['s1', 's2', 's1']}
+[PASS] trigger_scene raises SceneNotFoundError for unknown scene
+   Details: {'subclass_of_keyerror': True}
+[PASS] dispatcher exception is swallowed; trigger still returns commands
+   Details: {'out_len': 1}
+[PASS] list_scenes entries include name, sceneId, device_states
+   Details: {'first': {'name': 'listed', 'sceneId': 'listed', 'device_states': {'z-9': {'k': 'v'}}}}
+[PASS] delete_scene removes scene from get_scene
+[PASS] create_scene rejects whitespace-only name
+[PASS] create_scene overwrites device_states for same name
+   Details: {'name': 'ow', 'device_states': {'a': {'v': 2}}}
+[PASS] trigger_scene command dicts have deviceId and state
+   Details: {'deviceId': 'id1', 'state': {'action': 'toggle'}}
+[PASS] trigger_scene on empty device_states returns empty command list
+   Details: {'out': []}
+
+Summary: 10 passed, 0 failed, 0 skipped of 10.
+
+========================================================================
+tests/test_speech_to_text/test_speech_to_text_extended.py
+========================================================================
+Running extended speech-to-text tests...
+
+[PASS] process_voice_command mirrors process for text str
+[PASS] register_scene_alias maps custom phrase to scene id
+   Details: {'type': 'scene', 'scene': 'movie_night', 'sceneId': 'movie_night', 'name': 'movie_night', 'message': 'Activating scene: movie night', 'recognized': True, 'ok': True, 'raw': 'watch tv'}
+[PASS] register_device_alias maps phrase to device id
+   Details: {'type': 'action', 'deviceId': 'led-2', 'device': 'led-2', 'action': 'on', 'command': 'on', 'message': 'Executing: on led-2', 'recognized': True, 'ok': True, 'raw': 'turn on master bedroom lamp'}
+[PASS] close door; turn off fan (default aliases)
+   Details: {'close_door': {'type': 'action', 'deviceId': 'door', 'device': 'door', 'action': 'close', 'command': 'close', 'message': 'Executing: close door', 'recognized': True, 'ok': True, 'raw': 'close the door'}, 'fan': {'type': 'action', 'deviceId': 'fan', 'device': 'fan', 'action': 'off', 'command': 'off', 'message': 'Executing: off fan', 'recognized': True, 'ok': True, 'raw': 'turn off the fan'}}
+[PASS] open door; turn on the light (device aliases)
+   Details: {'open': {'type': 'action', 'deviceId': 'door', 'device': 'door', 'action': 'open', 'command': 'open', 'message': 'Executing: open door', 'recognized': True, 'ok': True, 'raw': 'open the door'}, 'light': {'type': 'action', 'deviceId': 'light', 'device': 'light', 'action': 'on', 'command': 'on', 'message': 'Executing: on light', 'recognized': True, 'ok': True, 'raw': 'turn on the light'}}
+[PASS] activate <scene> verb path resolves scene
+   Details: {'type': 'scene', 'scene': 'good_morning', 'sceneId': 'good_morning', 'name': 'good_morning', 'message': 'Activating scene: good morning', 'recognized': True, 'ok': True, 'raw': 'activate good morning'}
+[PASS] None text yields unknown / safe response
+   Details: {'type': 'unknown', 'recognized': False, 'ok': False, 'message': 'Sorry, I did not hear anything.'}
+[PASS] Random phrase returns unknown type
+   Details: {'type': 'unknown', 'recognized': False, 'ok': False, 'message': "Sorry, I did not understand: 'quantum bramblefox z7'"}
+[PASS] Punctuation in phrase still parses
+   Details: {'type': 'scene', 'scene': 'good_night', 'sceneId': 'good_night', 'name': 'good_night', 'message': 'Activating scene: good night', 'recognized': True, 'ok': True, 'raw': 'good night'}
+[PASS] src.speech_to_text.process re-exports default parser
+   Details: {'type': 'scene', 'scene': 'good_night', 'sceneId': 'good_night', 'name': 'good_night', 'message': 'Activating scene: good night', 'recognized': True, 'ok': True, 'raw': 'good night'}
+
+Summary: 10 passed, 0 failed, 0 skipped of 10.
+
+========================================================================
+tests/test_rbac/test_rbac_extended.py
+========================================================================
+Running extended RBAC and device access tests...
+
+[PASS] ROLE_CAREGIVER is defined and has a permission set
+   Details: {'caregiver': ['automation:view', 'scene:delete', 'scene:view', 'device:view', 'scene:trigger', 'device:control', 'sensor:view', 'scene:create']}
+[PASS] assign_role accepts primary_user (normalizes to admin)
+   Details: {'assigned': 'admin', 'lookup': 'admin'}
+[PASS] assign_role stores caregiver; get_user_role returns caregiver
+   Details: {'role': 'caregiver'}
+[PASS] enforce_permission denies DEVICE_CONTROL for guest with fake send_error
+   Details: {'ok': False, 'errors': ["Access denied: role 'guest' cannot perform 'device:control'"]}
+[PASS] enforce_permission allows SCENE_TRIGGER for caregiver
+[PASS] infer servo/window type denied for caregiver control
+   Details: {'allowed': False}
+[PASS] smoke-typed device allowed for caregiver
+[PASS] filter_devices_for_user: family_member keeps door; caregiver drops it
+   Details: {'family': {'door-1', 'led-1'}, 'caregiver': {'led-1'}}
+[PASS] check_access: caregiver has DEVICE_CONTROL at permission layer
+[PASS] revoke_role downgrades to guest
+   Details: {'role': 'guest'}
+
+Summary: 10 passed, 0 failed, 0 skipped of 10.
+
+========================================================================
+tests/test_rbac/test_device_access.py
+========================================================================
+Running device_access (RBAC) tests...
+
+[PASS] infer_device_category uses deviceType when present
+[PASS] infer_device_category falls back to deviceId prefix
+[PASS] caregiver denied door/servo; allowed led
+[PASS] admin not restricted by device category
+[PASS] filter_devices_for_user hides door for caregiver
+   Details: {'ids': {'led-1'}}
+[PASS] normalize_role maps primary_user to admin
+[PASS] rbac package exports user_can_access_device and filter_devices_for_user
+
+Summary: 7/7 tests passed.
+
+========================================================================
+tests/test_sensors_automation/test_sensors_automation_extended.py
+========================================================================
+Running extended sensors and automation tests...
+
+[PASS] Condition NEQ, LT, GTE match readings
+[PASS] Humidity > 70 dispatches dehumidifier on
+   Details: {'out': [('dehum-1', 'on')]}
+[PASS] DoorWindowSensor open string fires rule
+   Details: {'log': ['chime-1:ring']}
+[PASS] Two rules on same temp sensor: cold vs hot
+   Details: {'cold': [('heater-1', 'on')], 'mid': [], 'hot': [('ac-1', 'on')]}
+[PASS] Motion EQ False dispatches (e.g. all clear)
+   Details: {'true_read': [], 'false_read': [('lights-1', 'dim')]}
+[PASS] unregister removes sensor; ingest is ignored
+[PASS] SensorManager list_sensors returns registered ids
+   Details: {'ids': {'a', 'b'}}
+[PASS] AutomationRule.to_dict includes condition and actions
+   Details: {'ruleId': 'r1', 'name': 'R', 'enabled': True, 'condition': {'sensorId': 's1', 'operator': '==', 'value': 1}, 'actions': [{'deviceId': 'd1', 'action': 'x'}], 'lastTriggered': None, 'triggerCount': 0}
+
+Summary: 8 passed, 0 failed, 0 skipped of 8.
+
+========================================================================
+tests/test_sensors_automation/test_temperature_smoke_rules.py
+========================================================================
+Running extra sensors + automation tests...
+
+[PASS] temperature > threshold dispatches fan on
+   Details: {'dispatched': [('fan-1', 'on')]}
+[PASS] smoke / fire style reading dispatches alarm on (via motion-type bool path)
+   Details: {'dispatched': ['alarm-1:on']}
+[PASS] SensorManager holds motion and temperature simultaneously
+
+Summary: 3/3 tests passed.
+
+========================================================================
+tests/test_integration/test_server_iter4_wiring.py
+========================================================================
+Running serverService Iter4 integration tests...
+
+NOTE: serverService could not be imported. Install dependencies:
+  pip install -r requirements.txt
+
+Traceback (most recent call last):
+  File "/Users/sham_sara/Desktop/interactive-house/server/tests/test_integration/test_server_iter4_wiring.py", line 24, in <module>
+    import serverService as ss  # noqa: F401
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/sham_sara/Desktop/interactive-house/server/serverService.py", line 8, in <module>
+    from db_service import *
+  File "/Users/sham_sara/Desktop/interactive-house/server/db_service.py", line 2, in <module>
+    import bcrypt
+ModuleNotFoundError: No module named 'bcrypt'
+

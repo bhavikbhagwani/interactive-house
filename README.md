@@ -372,4 +372,4 @@ Arduino → Hardware Bridge → Server → Android UI
 
 ## Iteration 4 and 5 – Overview
 
-to be defined later
+Iterations 4 and 5 are a single final phase: RBAC, more sensors, automation, unified UI, scenes, and speech-to-text. Full scope and technical approach: [docs/ITERATIONS_4_5.md](docs/ITERATIONS_4_5.md).

@@ -49,8 +49,20 @@ class Permission:
 ROLE_ADMIN = "admin"
 ROLE_FAMILY_MEMBER = "family_member"
 ROLE_GUEST = "guest"
+ROLE_CAREGIVER = "caregiver"
 
 DEFAULT_ROLE = ROLE_FAMILY_MEMBER
+
+_CAREGIVER_PERMS = frozenset({
+    Permission.DEVICE_VIEW,
+    Permission.DEVICE_CONTROL,
+    Permission.SCENE_VIEW,
+    Permission.SCENE_TRIGGER,
+    Permission.SCENE_CREATE,
+    Permission.SCENE_DELETE,
+    Permission.SENSOR_VIEW,
+    Permission.AUTOMATION_VIEW,
+})
 
 
 # Role -> permissions mapping. Frozenset so individual role sets are
@@ -85,6 +97,7 @@ ROLES: Dict[str, FrozenSet[str]] = {
         Permission.DEVICE_VIEW,
         Permission.SCENE_VIEW,
     }),
+    ROLE_CAREGIVER: _CAREGIVER_PERMS,
 }
 
 
@@ -93,6 +106,7 @@ ROLES: Dict[str, FrozenSet[str]] = {
 _ROLE_ALIASES: Dict[str, str] = {
     "user": ROLE_FAMILY_MEMBER,
     "unit": ROLE_FAMILY_MEMBER,
+    "primary_user": ROLE_ADMIN,
 }
 
 

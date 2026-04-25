@@ -27,11 +27,17 @@ from .roles import (
     ROLES,
     DEFAULT_ROLE,
     ROLE_ADMIN,
+    ROLE_CAREGIVER,
     ROLE_FAMILY_MEMBER,
     ROLE_GUEST,
     role_has_permission,
     get_permissions,
     normalize_role,
+)
+from .device_access import (
+    filter_devices_for_user,
+    infer_device_category,
+    user_can_access_device,
 )
 from .access_control import (
     AccessDeniedError,
@@ -51,6 +57,7 @@ __all__ = [
     "ROLES",
     "DEFAULT_ROLE",
     "ROLE_ADMIN",
+    "ROLE_CAREGIVER",
     "ROLE_FAMILY_MEMBER",
     "ROLE_GUEST",
     "role_has_permission",
@@ -64,4 +71,7 @@ __all__ = [
     "revoke_role",
     "get_user_role",
     "list_users_with_roles",
+    "filter_devices_for_user",
+    "infer_device_category",
+    "user_can_access_device",
 ]

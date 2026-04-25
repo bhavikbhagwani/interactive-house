@@ -10,6 +10,8 @@ def seed_default_users():
         ("user@email.com", "user123", "user"),
         ("bhavik@email.com", "bhavik", "user"),
         ("meryam@email.com", "meryam", "user"),
+        ("primary@email.com", "primary123", "primary_user"),
+        ("caregiver@email.com", "caregiver123", "caregiver"),
     ]
 
     for email, password, role in demo_users:
