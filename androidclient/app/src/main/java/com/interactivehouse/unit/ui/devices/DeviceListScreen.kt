@@ -1,5 +1,13 @@
 package com.interactivehouse.unit.ui.devices
 
+import android.Manifest
+import android.app.Activity
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.speech.RecognizerIntent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -13,14 +21,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
-import com.interactivehouse.unit.data.models.Device
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.foundation.Image
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import com.interactivehouse.unit.R
+import com.interactivehouse.unit.data.models.Device
+import java.util.Locale
 
 @Composable
 fun DeviceListScreen(
@@ -28,12 +37,68 @@ fun DeviceListScreen(
     deviceStates: Map<String, Map<String, Any>>,
     isLoading: Boolean,
     error: String?,
+    statusMessage: String?,
     onRefresh: () -> Unit,
-    onSelect: (Device) -> Unit
+    onSelect: (Device) -> Unit,
+    onTriggerScene: (String) -> Unit,
+    onVoiceCommand: (String) -> Unit,
+    onClearMessage: () -> Unit
 ) {
-    Box(
-        modifier = Modifier.fillMaxSize()
-    ) {
+    val context = LocalContext.current
+
+    val speechLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val spokenText = result.data
+                ?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
+                ?.firstOrNull()
+                .orEmpty()
+
+            if (spokenText.isNotBlank()) {
+                onVoiceCommand(spokenText)
+            }
+        }
+    }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                putExtra(
+                    RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+                    RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
+                )
+                putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault())
+                putExtra(RecognizerIntent.EXTRA_PROMPT, "Speak a command")
+            }
+            speechLauncher.launch(intent)
+        }
+    }
+
+    fun launchSpeechInput() {
+        val hasPermission = ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.RECORD_AUDIO
+        ) == PackageManager.PERMISSION_GRANTED
+
+        if (hasPermission) {
+            val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                putExtra(
+                    RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+                    RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
+                )
+                putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault())
+                putExtra(RecognizerIntent.EXTRA_PROMPT, "Speak a command")
+            }
+            speechLauncher.launch(intent)
+        } else {
+            permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+        }
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -49,9 +114,7 @@ fun DeviceListScreen(
                 )
         )
 
-        Column(
-            modifier = Modifier.fillMaxSize()
-        ) {
+        Column(modifier = Modifier.fillMaxSize()) {
             Spacer(modifier = Modifier.height(34.dp))
 
             Row(
@@ -121,6 +184,67 @@ fun DeviceListScreen(
                         Spacer(modifier = Modifier.height(12.dp))
                     }
 
+                    if (!statusMessage.isNullOrBlank()) {
+                        Card(
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.secondaryContainer
+                            ),
+                            shape = RoundedCornerShape(16.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onClearMessage() }
+                        ) {
+                            Text(
+                                text = statusMessage,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                modifier = Modifier.padding(14.dp)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
+
+                    Text(
+                        text = "Scenes",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Button(
+                            onClick = { onTriggerScene("good_morning") },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(16.dp)
+                        ) {
+                            Text("Good Morning")
+                        }
+
+                        Button(
+                            onClick = { onTriggerScene("good_night") },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(16.dp)
+                        ) {
+                            Text("Good Night")
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    OutlinedButton(
+                        onClick = { launchSpeechInput() },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
+                        Text("Voice Command")
+                    }
+
+                    Spacer(modifier = Modifier.height(18.dp))
+
                     if (isLoading && devices.isEmpty()) {
                         Box(
                             modifier = Modifier.fillMaxSize(),
@@ -169,7 +293,10 @@ fun DeviceListScreen(
                                             verticalArrangement = Arrangement.spacedBy(6.dp)
                                         ) {
                                             Text(
-                                                text = friendlyName(device.deviceType, device.deviceId),
+                                                text = friendlyName(
+                                                    device.deviceType,
+                                                    device.deviceId
+                                                ),
                                                 style = MaterialTheme.typography.titleLarge,
                                                 fontWeight = FontWeight.SemiBold,
                                                 maxLines = 1
@@ -222,24 +349,38 @@ private fun DeviceIcon(deviceType: String) {
         deviceType.contains("door", ignoreCase = true) ||
                 deviceType.contains("lock", ignoreCase = true) -> R.drawable.door
 
-        deviceType.contains("fan", ignoreCase = true) -> R.drawable.fan
-
-        deviceType.contains("servo", ignoreCase = true) ||
-                deviceType.contains("window", ignoreCase = true) -> R.drawable.window
-
         deviceType.contains("coffee", ignoreCase = true) -> R.drawable.coffee_cup
+
+        // Safe fallback icons to avoid missing fan/window drawable errors
+        deviceType.contains("fan", ignoreCase = true) -> R.drawable.lightbulb
+        deviceType.contains("servo", ignoreCase = true) ||
+                deviceType.contains("window", ignoreCase = true) -> R.drawable.lightbulb
+
+        deviceType.contains("motion", ignoreCase = true) -> R.drawable.lightbulb
+        deviceType.contains("smoke", ignoreCase = true) -> R.drawable.lightbulb
+        deviceType.contains("temp", ignoreCase = true) ||
+                deviceType.contains("temperature", ignoreCase = true) -> R.drawable.lightbulb
+
+        deviceType.contains("alarm", ignoreCase = true) ||
+                deviceType.contains("buzzer", ignoreCase = true) -> R.drawable.lightbulb
 
         else -> R.drawable.lightbulb
     }
 
-    Image(
-        painter = painterResource(id = iconRes),
-        contentDescription = deviceType,
-        modifier = Modifier.size(28.dp)
-    )
+    Box(
+        modifier = Modifier
+            .size(52.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(Color(0xFFDCE6FF)),
+        contentAlignment = Alignment.Center
+    ) {
+        Image(
+            painter = painterResource(id = iconRes),
+            contentDescription = deviceType,
+            modifier = Modifier.size(28.dp)
+        )
+    }
 }
-
-
 
 private fun readableStatus(
     deviceType: String,
@@ -286,6 +427,29 @@ private fun readableStatus(
             else -> "Unknown"
         }
 
+        "motion" in type -> when {
+            state["motionDetected"] == true -> "MOTION DETECTED"
+            state["motionDetected"] == false -> "NO MOTION"
+            else -> "Unknown"
+        }
+
+        "smoke" in type -> when {
+            state["smokeDetected"] == true -> "SMOKE DETECTED"
+            state["smokeDetected"] == false -> "CLEAR"
+            else -> "Unknown"
+        }
+
+        "temp" in type || "temperature" in type -> {
+            val temp = state["temperature"]
+            if (temp != null) "$temp °C" else "Unknown"
+        }
+
+        "alarm" in type || "buzzer" in type -> when {
+            state["alarmOn"] == true -> "ON"
+            state["alarmOn"] == false -> "OFF"
+            else -> "Unknown"
+        }
+
         else -> "Unknown"
     }
 }
@@ -308,6 +472,10 @@ private fun friendlyName(deviceType: String, deviceId: String): String {
         "servo" in type || "window" in type -> "Window"
         "door" in type || "lock" in type -> "Door Lock"
         "coffee" in type -> "Coffee Machine"
+        "motion" in type -> "Motion Sensor"
+        "smoke" in type -> "Smoke Sensor"
+        "temp" in type || "temperature" in type -> "Temperature Sensor"
+        "alarm" in type || "buzzer" in type -> "Alarm"
 
         else -> deviceType
     }
@@ -321,17 +489,27 @@ private fun DeviceListScreenPreview() {
             devices = listOf(
                 Device(deviceId = "coffee-machine-1", deviceType = "coffee_machine"),
                 Device(deviceId = "door-1", deviceType = "door"),
-                Device(deviceId = "light-1", deviceType = "light")
+                Device(deviceId = "light-1", deviceType = "light"),
+                Device(deviceId = "motion-1", deviceType = "motion_sensor"),
+                Device(deviceId = "smoke-1", deviceType = "smoke_sensor"),
+                Device(deviceId = "temp-1", deviceType = "temperature_sensor")
             ),
             deviceStates = mapOf(
                 "coffee-machine-1" to mapOf("isMaking" to false),
                 "door-1" to mapOf("locked" to true),
-                "light-1" to mapOf("lightOn" to false)
+                "light-1" to mapOf("lightOn" to false),
+                "motion-1" to mapOf("motionDetected" to true),
+                "smoke-1" to mapOf("smokeDetected" to false),
+                "temp-1" to mapOf("temperature" to 24.5)
             ),
             isLoading = false,
             error = null,
+            statusMessage = "Scene triggered: good_night",
             onRefresh = {},
-            onSelect = {}
+            onSelect = {},
+            onTriggerScene = {},
+            onVoiceCommand = {},
+            onClearMessage = {}
         )
     }
 }
@@ -345,8 +523,12 @@ private fun DeviceListScreenEmptyPreview() {
             deviceStates = emptyMap(),
             isLoading = false,
             error = null,
+            statusMessage = null,
             onRefresh = {},
-            onSelect = {}
+            onSelect = {},
+            onTriggerScene = {},
+            onVoiceCommand = {},
+            onClearMessage = {}
         )
     }
 }
