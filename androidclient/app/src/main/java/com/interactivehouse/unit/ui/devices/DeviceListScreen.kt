@@ -445,8 +445,8 @@ private fun readableStatus(
         }
 
         "alarm" in type || "buzzer" in type -> when {
-            state["alarmOn"] == true -> "ON"
-            state["alarmOn"] == false -> "OFF"
+            state["alarmOn"] == true || state["buzzerOn"] == true -> "ON"
+            state["alarmOn"] == false || state["buzzerOn"] == false -> "OFF"
             else -> "Unknown"
         }
 
