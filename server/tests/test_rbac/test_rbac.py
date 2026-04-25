@@ -252,12 +252,20 @@ def test_role_has_permission_and_get_permissions():
 # ---------------------------------------------------------------------------
 
 def test_normalize_role_handles_legacy_names():
-    name = "normalize_role maps legacy user/unit -> family_member"
+    name = "normalize_role maps legacy + family aliases to family_member"
     if _skip_all(name):
         return
     try:
         hits = []
-        for legacy in ("user", "unit", "USER", "Unit"):
+        for legacy in (
+            "user",
+            "unit",
+            "USER",
+            "Unit",
+            "family",
+            "family member",
+            "Family Member",
+        ):
             normalized = rbac.normalize_role(legacy)
             if normalized != rbac.ROLE_FAMILY_MEMBER:
                 hits.append({"legacy": legacy, "got": normalized})

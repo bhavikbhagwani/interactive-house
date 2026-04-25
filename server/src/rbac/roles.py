@@ -13,8 +13,9 @@ Three roles are supported in Iteration 4:
                    no control or write access at all.
 
 Legacy users seeded in earlier iterations used the role string "user".
-For backward compatibility we treat "user" as an alias of "family_member"
-through :func:`normalize_role`.
+For backward compatibility we treat "user" and human-readable
+``family`` / ``family member`` as aliases of ``family_member`` through
+:func:`normalize_role`.
 """
 
 from typing import Dict, FrozenSet
@@ -106,6 +107,8 @@ ROLES: Dict[str, FrozenSet[str]] = {
 _ROLE_ALIASES: Dict[str, str] = {
     "user": ROLE_FAMILY_MEMBER,
     "unit": ROLE_FAMILY_MEMBER,
+    "family": ROLE_FAMILY_MEMBER,
+    "family member": ROLE_FAMILY_MEMBER,
     "primary_user": ROLE_ADMIN,
 }
 
