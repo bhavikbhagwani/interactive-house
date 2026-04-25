@@ -43,6 +43,15 @@ def save_device_state(device_id: str, state: dict):
     """, (state_json, time_now, device_id))
 
 
+def fetch_device_type(device_id: str):
+    """Return deviceType for a known device id, or None if not in DB."""
+    rows = db_query(
+        "SELECT deviceType FROM devices WHERE deviceId = ?;",
+        (device_id,),
+    )
+    return rows[0]["deviceType"] if rows else None
+
+
 def fetch_devices_list():
     """Return list like: [{deviceId, deviceType}, ...]"""
     rows = db_query("SELECT deviceId, deviceType FROM devices ORDER BY deviceId;")

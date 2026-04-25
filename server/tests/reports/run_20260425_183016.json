@@ -1,0 +1,73 @@
+{
+  "run_utc": "2026-04-25T18:30:16Z",
+  "python": "/opt/homebrew/opt/python@3.14/bin/python3.14",
+  "total_duration_s": 0.3417,
+  "suites": [
+    {
+      "script": "tests/test_scenes/test_scenes_extended.py",
+      "returncode": 0,
+      "duration_s": 0.0533,
+      "status": "ok",
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0,
+      "total": 10
+    },
+    {
+      "script": "tests/test_speech_to_text/test_speech_to_text_extended.py",
+      "returncode": 0,
+      "duration_s": 0.0392,
+      "status": "ok",
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0,
+      "total": 10
+    },
+    {
+      "script": "tests/test_rbac/test_rbac_extended.py",
+      "returncode": 0,
+      "duration_s": 0.0401,
+      "status": "ok",
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0,
+      "total": 10
+    },
+    {
+      "script": "tests/test_rbac/test_device_access.py",
+      "returncode": 0,
+      "duration_s": 0.0373,
+      "status": "ok",
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0,
+      "total": 7
+    },
+    {
+      "script": "tests/test_sensors_automation/test_sensors_automation_extended.py",
+      "returncode": 0,
+      "duration_s": 0.0401,
+      "status": "ok",
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0,
+      "total": 8
+    },
+    {
+      "script": "tests/test_sensors_automation/test_temperature_smoke_rules.py",
+      "returncode": 0,
+      "duration_s": 0.0382,
+      "status": "ok",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0,
+      "total": 3
+    },
+    {
+      "script": "tests/test_integration/test_server_iter4_wiring.py",
+      "returncode": 0,
+      "duration_s": 0.0918,
+      "status": "import_error"
+    }
+  ]
+}
