@@ -1,6 +1,11 @@
+"""
+Protocol module - JSON communication over TCP using newline-delimited JSON (NDJSON).
+"""
+
 import json
 import socket
 from typing import Any, Dict, Optional
+
 
 def send_json(sock: socket.socket, msg: Dict[str, Any]) -> None:
     """
@@ -8,6 +13,7 @@ def send_json(sock: socket.socket, msg: Dict[str, Any]) -> None:
     """
     data = json.dumps(msg, separators=(",", ":")).encode("utf-8") + b"\n"
     sock.sendall(data)
+
 
 def recv_json_line(buffered) -> Optional[Dict[str, Any]]:
     """

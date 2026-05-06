@@ -1,0 +1,38 @@
+{
+  "scenes": {
+    "good_morning": {
+      "device_states": {
+        "door-1": {
+          "action": "open"
+        },
+        "fan-1": {
+          "action": "on"
+        },
+        "led-1": {
+          "action": "on"
+        },
+        "led-2": {
+          "action": "on"
+        }
+      },
+      "name": "good_morning"
+    },
+    "good_night": {
+      "device_states": {
+        "door-1": {
+          "action": "close"
+        },
+        "fan-1": {
+          "action": "off"
+        },
+        "led-1": {
+          "action": "off"
+        },
+        "led-2": {
+          "action": "off"
+        }
+      },
+      "name": "good_night"
+    }
+  }
+}
