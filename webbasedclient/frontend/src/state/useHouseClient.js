@@ -28,6 +28,7 @@ export function useHouseClient(options = {}) {
 
   const [uiItems, setUiItems] = useState([]);
   const [latestState, setLatestState] = useState({});
+  const [deviceStates, setDeviceStates] = useState({});
 
   const [statusMsg, setStatusMsg] = useState("");
 
@@ -36,72 +37,102 @@ export function useHouseClient(options = {}) {
   const wsRef = useRef(null);
 
   const handleMessage = (msg) => {
-    const type = msg?.type;
-    const payload = msg?.payload || {};
+  const type = msg?.type;
+  const payload = msg?.payload || {};
 
-    console.log("RECV:", type, msg);
+  console.log("RECV:", type, msg);
 
-    switch (type) {
-      case MSG.LOGIN_OK: {
-        setStatusMsg("Login OK");
-        setView(VIEW.DEVICES);
-        // after login, request device list
-        wsRef.current?.send(buildGetDevices(senderId));
-        return;
+  switch (type) {
+    case MSG.LOGIN_OK: {
+      setStatusMsg("Login OK");
+      setView(VIEW.DEVICES);
+      wsRef.current?.send(buildGetDevices(senderId));
+      return;
+    }
+
+    case MSG.LOGIN_FAILED: {
+      setStatusMsg("Login failed");
+      setView(VIEW.LOGIN);
+      return;
+    }
+
+    case MSG.DEVICE_LIST: {
+      const list = payload.devices || [];
+      setDevices(list);
+
+      const states = {};
+      for (const d of list) {
+        if (d.deviceId && d.state) {
+          states[d.deviceId] = d.state;
+        }
       }
 
-      case MSG.LOGIN_FAILED: {
-        setStatusMsg("Login failed");
-        setView(VIEW.LOGIN);
-        return;
+      setDeviceStates((prev) => ({
+        ...prev,
+        ...states,
+      }));
+
+      setStatusMsg(`Received ${list.length} devices`);
+      return;
+    }
+
+    case MSG.UI_DEFINITION: {
+      const deviceId = payload.deviceId;
+      const ui = payload.ui || [];
+      const state = payload.state || {};
+
+      if (deviceId) {
+        setDeviceStates((prev) => ({
+          ...prev,
+          [deviceId]: {
+            ...(prev[deviceId] || {}),
+            ...state,
+          },
+        }));
       }
 
-      case MSG.DEVICE_LIST: {
-        const list = payload.devices || [];
-        setDevices(list);
-        setStatusMsg(`Received ${list.length} devices`);
-        return;
+      setSelectedDeviceId(deviceId);
+      setUiItems(ui);
+      setLatestState(state);
+      setView(VIEW.DEVICE);
+      setStatusMsg(`Loaded UI for ${deviceId}`);
+      return;
+    }
+
+    case MSG.STATE_UPDATE: {
+      const deviceId = payload.deviceId;
+      const state = payload.state || {};
+
+      if (deviceId) {
+        setDeviceStates((prev) => ({
+          ...prev,
+          [deviceId]: {
+            ...(prev[deviceId] || {}),
+            ...state,
+          },
+        }));
       }
 
-      case MSG.UI_DEFINITION: {
-        const deviceId = payload.deviceId;
-        const ui = payload.ui || [];
-        const state = payload.state || {};
-
-        setSelectedDeviceId(deviceId);
-        setUiItems(ui);
-        setLatestState(state);
-        setView(VIEW.DEVICE);
-        setStatusMsg(`Loaded UI for ${deviceId}`);
-        return;
-      }
-
-      case MSG.STATE_UPDATE: {
-
-        const deviceId = payload.deviceId;
-        const state = payload.state || {};
-
-        // only apply updates for the currently open device
-        if (selectedDeviceId && deviceId && deviceId !== selectedDeviceId) return;
-
+      if (!selectedDeviceId || deviceId === selectedDeviceId) {
         setLatestState((prev) => ({ ...prev, ...state }));
         setActionPending(false);
-        setStatusMsg(`State update for ${deviceId || "device"}`);
-        return;
       }
 
-      case MSG.ERROR: {
-        setActionPending(false);
-        setStatusMsg(`Error: ${payload.message || "Unknown error"}`);
-        return;
-      }
-
-      default: {
-        // Ignore unknown messages for now
-        return;
-      }
+      setStatusMsg(`State update for ${deviceId || "device"}`);
+      return;
     }
-  };
+
+    case MSG.ERROR: {
+      setActionPending(false);
+      setStatusMsg(`Error: ${payload.message || "Unknown error"}`);
+      return;
+    }
+
+    default: {
+      return;
+    }
+  }
+};
 
   const client = useMemo(() => {
     return new WsClient({
@@ -158,10 +189,11 @@ export function useHouseClient(options = {}) {
 
     // data
     devices,
+    deviceStates,
     selectedDeviceId,
     uiItems,
     latestState,
-
+    
     actionPending,
 
     // actions

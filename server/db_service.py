@@ -53,10 +53,26 @@ def fetch_device_type(device_id: str):
 
 
 def fetch_devices_list():
-    """Return list like: [{deviceId, deviceType}, ...]"""
-    rows = db_query("SELECT deviceId, deviceType FROM devices ORDER BY deviceId;")
-    # list comprehension used to double check that only device id and device type is returned.
-    return [{"deviceId": r["deviceId"], "deviceType": r["deviceType"]} for r in rows]
+    """Return list like: [{deviceId, deviceType, state}, ...]"""
+    rows = db_query("""
+        SELECT deviceId, deviceType, latestState
+        FROM devices
+        ORDER BY deviceId;
+    """)
+
+    devices = []
+
+    for r in rows:
+        state_string = r["latestState"]
+        state = json.loads(state_string) if state_string else {}
+
+        devices.append({
+            "deviceId": r["deviceId"],
+            "deviceType": r["deviceType"],
+            "state": state
+        })
+
+    return devices
 
 def fetch_device_ui_and_state(device_id: str):
     """

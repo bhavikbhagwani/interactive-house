@@ -1,169 +1,308 @@
 export default function DeviceListPage({
   devices,
+  deviceStates,
   statusMsg,
   onRefresh,
   onOpenDevice,
 }) {
+  function getDeviceTypeLabel(deviceType, deviceId) {
+    const type = deviceType?.toLowerCase() || "";
+    const id = deviceId?.toLowerCase() || "";
 
-  function getDeviceTypeLabel(deviceType) {
-  if (deviceType === "light") return "Light";
-  if (deviceType === "led") return "LED Light";
-  if (deviceType === "door") return "Door";
-  if (deviceType === "coffee_machine") return "Coffee Machine";
-  if (deviceType === "fan") return "Fan";
-  if (deviceType === "servo") return "Window";
-  return deviceType;
-}
+    if (type.includes("led")) {
+      const number = id.split("-").pop();
+      return `LED Light ${number || ""}`;
+    }
+
+    if (type.includes("fan")) {
+      const number = id.split("-").pop();
+      return `Fan ${number || ""}`;
+    }
+
+    if (type.includes("door")) return "Door";
+    if (type.includes("servo") || type.includes("window")) return "Window";
+    if (type.includes("motion")) return "Motion Sensor";
+    if (type.includes("smoke")) return "Smoke Sensor";
+    if (type.includes("temp")) return "Temperature Sensor";
+    if (type.includes("alarm")) return "Alarm";
+    if (type.includes("coffee")) return "Coffee Machine";
+
+    return deviceType;
+  }
+
+  function getDeviceIcon(deviceType) {
+    const type = deviceType?.toLowerCase() || "";
+
+    if (type.includes("door")) return "🚪";
+    if (type.includes("fan")) return "🌀";
+    if (type.includes("servo") || type.includes("window")) return "🪟";
+    if (type.includes("motion")) return "🚶";
+    if (type.includes("smoke")) return "💨";
+    if (type.includes("temp")) return "🌡️";
+    if (type.includes("alarm")) return "🚨";
+
+    return "💡";
+  }
+
+function getStatusText(deviceType, state) {
+    if (!state || Object.keys(state).length === 0) {
+      return "Unknown";
+    }
+
+    const type = deviceType?.toLowerCase() || "";
+
+    if (type.includes("led")) {
+      return state.ledOn ? "ON" : "OFF";
+    }
+
+    if (type.includes("fan")) {
+      return state.fanOn ? "ON" : "OFF";
+    }
+
+    if (type.includes("door")) {
+      return state.doorState || "Unknown";
+    }
+
+    if (type.includes("servo") || type.includes("window")) {
+      if (state.position === 90) return "OPEN";
+      if (state.position === 0) return "CLOSED";
+      return state.position?.toString() || "Unknown";
+    }
+
+    if (type.includes("motion")) {
+      return state.motionDetected ? "MOTION" : "NO MOTION";
+    }
+
+    if (type.includes("smoke")) {
+      return state.smokeDetected ? "SMOKE" : "CLEAR";
+    }
+
+    if (type.includes("temp")) {
+      return `${state.temperature ?? "--"}°C`;
+    }
+
+    if (type.includes("alarm")) {
+      return state.alarmOn ? "ON" : "OFF";
+    }
+
+    return "Unknown";
+  }
 
   return (
     <div
       style={{
         minHeight: "100vh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "linear-gradient(180deg, #eef4ff 0%, #f8fbff 100%)",
-        padding: "24px",
+        background: "#f8f7ff",
+        fontFamily: "Arial, sans-serif",
       }}
     >
+      {/* Header */}
       <div
         style={{
-          width: "100%",
-          maxWidth: "560px",
-          background: "#ffffff",
-          borderRadius: "18px",
-          padding: "32px",
-          boxShadow: "0 12px 30px rgba(24, 58, 110, 0.12)",
-          border: "1px solid #e3ebf7",
+          height: "220px",
+          background:
+            "linear-gradient(180deg, #6f86b6 0%, #2c3e73 45%, #0d1333 100%)",
+          color: "#ffffff",
+          padding: "48px 38px 0",
+          boxSizing: "border-box",
         }}
       >
         <div
           style={{
+            maxWidth: "760px",
+            margin: "0 auto",
             display: "flex",
             justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: "20px",
+            alignItems: "flex-start",
           }}
         >
           <div>
-            <h2
+            <h1
               style={{
                 margin: 0,
-                fontSize: "28px",
-                color: "#163a6b",
+                fontSize: "38px",
+                fontWeight: 800,
               }}
             >
               Devices
-            </h2>
+            </h1>
+
             <p
               style={{
-                marginTop: "8px",
+                marginTop: "16px",
                 marginBottom: 0,
-                color: "#5b6b82",
-                lineHeight: 1.5,
+                fontSize: "20px",
+                color: "rgba(255,255,255,0.9)",
               }}
             >
-              Select a device to view its controls and current information.
+              What would you like to control today?
             </p>
           </div>
 
           <button
             onClick={onRefresh}
             style={{
-              padding: "12px 16px",
-              borderRadius: "12px",
               border: "none",
-              background: "#1f5fae",
+              background: "transparent",
               color: "#ffffff",
-              fontWeight: 600,
+              fontSize: "18px",
+              fontWeight: 700,
               cursor: "pointer",
+              paddingTop: "10px",
             }}
           >
             Refresh
           </button>
         </div>
+      </div>
 
-        <div style={{ marginTop: "20px" }}>
+      {/* Main rounded content area */}
+      <div
+        style={{
+          marginTop: "-34px",
+          minHeight: "calc(100vh - 186px)",
+          background: "#f8f7ff",
+          borderTopLeftRadius: "34px",
+          borderTopRightRadius: "34px",
+          padding: "32px 24px 40px",
+          boxSizing: "border-box",
+        }}
+      >
+        <div
+          style={{
+            maxWidth: "680px",
+            margin: "0 auto",
+          }}
+        >
           {devices && devices.length > 0 ? (
-            <div style={{ display: "grid", gap: "12px" }}>
-              {devices.map((d) => (
+            <div
+              style={{
+                display: "grid",
+                gap: "18px",
+              }}
+            >
+              {devices.map((d) => {
+                const state = deviceStates?.[d.deviceId];
+                const statusText = getStatusText(d.deviceType, state);
+
+                return (
                 <button
                   key={d.deviceId}
                   onClick={() => onOpenDevice(d.deviceId)}
                   style={{
                     width: "100%",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "20px",
                     textAlign: "left",
-                    padding: "18px 20px",
-                    borderRadius: "14px",
-                    border: "1px solid #dbe5f2",
-                    background: "#f8fbff",
+                    padding: "24px 28px",
+                    borderRadius: "24px",
+                    border: "none",
+                    background: "#e5e7f0",
+                    boxShadow: "0 10px 22px rgba(0, 0, 0, 0.15)",
                     cursor: "pointer",
                   }}
                 >
                   <div
                     style={{
-                      fontSize: "18px",
-                      fontWeight: 600,
-                      color: "#1c3557",
-                      marginBottom: "6px",
+                      width: "62px",
+                      height: "62px",
+                      borderRadius: "18px",
+                      background: "#dce6ff",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: "28px",
+                      flexShrink: 0,
                     }}
                   >
-                    {getDeviceTypeLabel(d.deviceType)}
+                    {getDeviceIcon(d.deviceType)}
                   </div>
 
-                  <div
-                    style={{
-                      fontSize: "14px",
-                      color: "#5b6b82",
-                    }}
-                  >
-                    Device ID: {d.deviceId}
+                  <div>
+                    <div
+                      style={{
+                        fontSize: "26px",
+                        fontWeight: 800,
+                        color: "#5d6473",
+                        marginBottom: "8px",
+                      }}
+                    >
+                      {getDeviceTypeLabel(d.deviceType, d.deviceId)}
+                    </div>
+
+                    <div
+                      style={{
+                        fontSize: "18px",
+                        color: "#6d7280",
+                        marginBottom: "10px",
+                      }}
+                    >
+                      Tap to view controls
+                    </div>
+
+                    <span
+                      style={{
+                        display: "inline-block",
+                        padding: "6px 14px",
+                        borderRadius: "999px",
+                        background: "#dce6ff",
+                        color: "#1f2a5a",
+                        fontSize: "15px",
+                        fontWeight: 700,
+                      }}
+                    >
+                      {statusText}
+                    </span>
                   </div>
                 </button>
-              ))}
+                  );
+                })}
             </div>
           ) : (
             <div
               style={{
-                padding: "20px",
-                borderRadius: "14px",
-                background: "#f8fbff",
-                border: "1px solid #dbe5f2",
-                color: "#5b6b82",
+                padding: "24px",
+                borderRadius: "20px",
+                background: "#e5e7f0",
+                color: "#6d7280",
+                textAlign: "center",
+                fontSize: "18px",
               }}
             >
-              No devices found.
+              No devices available
             </div>
           )}
-        </div>
 
-        <div
-          style={{
-            marginTop: "20px",
-            padding: "14px 16px",
-            borderRadius: "12px",
-            background: "#f4f8fd",
-            border: "1px solid #e0e8f5",
-          }}
-        >
+          {/* Web-only status box */}
           <div
             style={{
-              color: "#163a6b",
-              fontWeight: 600,
-              marginBottom: "6px",
+              marginTop: "24px",
+              padding: "16px 18px",
+              borderRadius: "18px",
+              background: "#eef1fa",
+              border: "1px solid #d9deee",
             }}
           >
-            Status
-          </div>
+            <div
+              style={{
+                color: "#1f2a5a",
+                fontWeight: 800,
+                marginBottom: "6px",
+              }}
+            >
+              Status
+            </div>
 
-          <div
-            style={{
-              color: "#5b6b82",
-              fontSize: "14px",
-              lineHeight: 1.5,
-            }}
-          >
-            {statusMsg || "Available devices will appear here."}
+            <div
+              style={{
+                color: "#5b6478",
+                fontSize: "14px",
+                lineHeight: 1.5,
+              }}
+            >
+              {statusMsg || "Available devices will appear here."}
+            </div>
           </div>
         </div>
       </div>
