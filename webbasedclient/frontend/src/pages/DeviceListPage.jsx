@@ -1,52 +1,14 @@
-function getDeviceTypeLabel(device) {
-  const type = device.deviceType || "";
-  const id = device.deviceId || "";
-
-  if (type === "light" || id.startsWith("light") || id.startsWith("led")) {
-    return "Light";
-  }
-
-  if (type === "door" || type === "door_lock" || id.startsWith("door")) {
-    return "Door Lock";
-  }
-
-  if (type === "coffee_machine" || id.startsWith("coffee")) {
-    return "Coffee Machine";
-  }
-
-  if (type === "fan" || id.startsWith("fan")) {
-    return "Fan";
-  }
-
-  if (type === "window" || type === "servo" || id.startsWith("window") || id.startsWith("servo")) {
-    return "Window";
-  }
-
-  if (type === "motion_sensor" || id.startsWith("motion")) {
-    return "Motion Sensor";
-  }
-
-  if (type === "smoke_sensor" || id.startsWith("smoke")) {
-    return "Smoke Sensor";
-  }
-
-  if (type === "temperature_sensor" || id.startsWith("temp")) {
-    return "Temperature Sensor";
-  }
-
-  if (type === "alarm" || id.startsWith("alarm") || id.startsWith("buzzer")) {
-    return "Alarm";
-  }
-
-  return type || "Unknown Device";
-}
-
 export default function DeviceListPage({
   devices,
   statusMsg,
   onRefresh,
   onOpenDevice,
+  onTriggerScene,
 }) {
+  const scenes = [
+    { id: "good_morning", label: "Good Morning" },
+    { id: "good_night", label: "Good Night" },
+  ];
 
   function getDeviceTypeLabel(deviceType) {
   if (deviceType === "light") return "Light";
@@ -124,6 +86,26 @@ export default function DeviceListPage({
           >
             Refresh
           </button>
+        </div>
+
+        <div style={{ marginTop: "14px", marginBottom: "18px", display: "flex", gap: "12px", flexWrap: "wrap" }}>
+          {scenes.map((scene) => (
+            <button
+              key={scene.id}
+              onClick={() => onTriggerScene?.(scene.id)}
+              style={{
+                padding: "12px 16px",
+                borderRadius: "12px",
+                border: "1px solid #dbe5f2",
+                background: "#f8fbff",
+                cursor: "pointer",
+                fontWeight: 600,
+                color: "#1c3557",
+              }}
+            >
+              {scene.label}
+            </button>
+          ))}
         </div>
 
         <div style={{ marginTop: "20px" }}>
