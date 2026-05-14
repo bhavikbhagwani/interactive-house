@@ -24,6 +24,7 @@ export default function App() {
         statusMsg={hc.statusMsg}
         onRefresh={hc.refreshDevices}
         onOpenDevice={hc.openDevice}
+        onTriggerScene={hc.sendScene}
       />
     );
   }

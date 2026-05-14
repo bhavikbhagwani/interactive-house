@@ -1,9 +1,9 @@
 // React hook that mirrors the unit_client.py logic:
 // login -> get_devices -> get_ui -> action -> state_update
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { WsClient } from "../api/wsClient";
-import { MSG, buildAction, buildGetDevices, buildGetUi, buildLogin } from "../api/protocol";
+import { MSG, buildAction, buildGetDevices, buildGetUi, buildLogin, buildTriggerScene } from "../api/protocol";
 
 // the routing states
 export const VIEW = {
@@ -34,8 +34,13 @@ export function useHouseClient(options = {}) {
   const [actionPending, setActionPending] = useState(false);
 
   const wsRef = useRef(null);
+  const selectedDeviceIdRef = useRef(null);
 
-  const handleMessage = (msg) => {
+  useEffect(() => {
+    selectedDeviceIdRef.current = selectedDeviceId;
+  }, [selectedDeviceId]);
+
+  const handleMessage = useCallback((msg) => {
     const type = msg?.type;
     const payload = msg?.payload || {};
 
@@ -82,7 +87,7 @@ export function useHouseClient(options = {}) {
         const state = payload.state || {};
 
         // only apply updates for the currently open device
-        if (selectedDeviceId && deviceId && deviceId !== selectedDeviceId) return;
+        if (selectedDeviceIdRef.current && deviceId && deviceId !== selectedDeviceIdRef.current) return;
 
         setLatestState((prev) => ({ ...prev, ...state }));
         setActionPending(false);
@@ -101,23 +106,24 @@ export function useHouseClient(options = {}) {
         return;
       }
     }
-  };
+  }, [senderId]);
 
-  const client = useMemo(() => {
-    return new WsClient({
+  useEffect(() => {
+    const client = new WsClient({
       onMessage: handleMessage,
       onStatus: (s) => setConnected(Boolean(s.connected)),
     });
-  }, []);
 
-  useEffect(() => {
     wsRef.current = client;
     client.connect(wsUrl);
 
     return () => {
       client.disconnect();
+      if (wsRef.current === client) {
+        wsRef.current = null;
+      }
     };
-  }, [client, wsUrl]);
+  }, [handleMessage, wsUrl]);
 
   // Actions (similar to send_json(...) in the CLI)
   const login = (email, password) => {
@@ -150,6 +156,12 @@ export function useHouseClient(options = {}) {
     wsRef.current?.send(buildAction(senderId, selectedDeviceId, action));
   };
 
+  const sendScene = (sceneId) => {
+    if (!sceneId) return;
+    setStatusMsg(`Triggering scene ${sceneId}...`);
+    wsRef.current?.send(buildTriggerScene(senderId, sceneId));
+  };
+
   return {
     // connection + "routing"
     connected,
@@ -170,5 +182,6 @@ export function useHouseClient(options = {}) {
     openDevice,
     backToDevices,
     sendAction,
+    sendScene,
   };
 }

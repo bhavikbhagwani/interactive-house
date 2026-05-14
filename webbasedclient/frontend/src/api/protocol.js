@@ -18,6 +18,7 @@ export const MSG = {
   UI_DEFINITION: "ui_definition",
 
   ACTION: "action",
+  TRIGGER_SCENE: "trigger_scene",
   STATE_UPDATE: "state_update",
 
   ERROR: "error",
@@ -53,5 +54,13 @@ export function buildAction(sender_id, deviceId, action) {
     type: MSG.ACTION,
     sender_id,
     payload: { deviceId, action },
+  };
+}
+
+export function buildTriggerScene(sender_id, sceneId) {
+  return {
+    type: MSG.TRIGGER_SCENE,
+    sender_id,
+    payload: { sceneId },
   };
 }

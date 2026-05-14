@@ -3,7 +3,12 @@ export default function DeviceListPage({
   statusMsg,
   onRefresh,
   onOpenDevice,
+  onTriggerScene,
 }) {
+  const scenes = [
+    { id: "good_morning", label: "Good Morning" },
+    { id: "good_night", label: "Good Night" },
+  ];
 
   function getDeviceTypeLabel(deviceType) {
   if (deviceType === "light") return "Light";
@@ -83,6 +88,26 @@ export default function DeviceListPage({
           </button>
         </div>
 
+        <div style={{ marginTop: "14px", marginBottom: "18px", display: "flex", gap: "12px", flexWrap: "wrap" }}>
+          {scenes.map((scene) => (
+            <button
+              key={scene.id}
+              onClick={() => onTriggerScene?.(scene.id)}
+              style={{
+                padding: "12px 16px",
+                borderRadius: "12px",
+                border: "1px solid #dbe5f2",
+                background: "#f8fbff",
+                cursor: "pointer",
+                fontWeight: 600,
+                color: "#1c3557",
+              }}
+            >
+              {scene.label}
+            </button>
+          ))}
+        </div>
+
         <div style={{ marginTop: "20px" }}>
           {devices && devices.length > 0 ? (
             <div style={{ display: "grid", gap: "12px" }}>
@@ -108,9 +133,8 @@ export default function DeviceListPage({
                       marginBottom: "6px",
                     }}
                   >
-                    {getDeviceTypeLabel(d.deviceType)}
+                    {getDeviceTypeLabel(d)}
                   </div>
-
                   <div
                     style={{
                       fontSize: "14px",
