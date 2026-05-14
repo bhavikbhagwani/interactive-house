@@ -46,14 +46,12 @@ MOTION_SENSOR_DEVICES = [
     {"id": "motion-sensor-1", "name": "Motion Sensor", "pin": 2},
 ]
 
-# Smoke Sensor (MQ-2) - Analog
 SMOKE_SENSOR_DEVICES = [
-    {"id": "smoke-sensor-1", "name": "Smoke Sensor", "pin": 0, "threshold": 300},  # A0
+    {"id": "smoke-sensor-1", "name": "Smoke Sensor", "pin": "A0", "threshold": 130},
 ]
 
-# Temperature Sensor - Analog (using steam/vapor sensor as temp proxy, or dedicated temp sensor)
 TEMPERATURE_SENSOR_DEVICES = [
-    {"id": "temp-sensor-1", "name": "Temperature Sensor", "pin": 3, "threshold_high": 30, "threshold_low": 18},  # A3
+    {"id": "temp-sensor-1", "name": "Temperature Sensor", "pin": "A3", "threshold_high": 30, "threshold_low": 18},
 ]
 
 # Alarm/Buzzer
@@ -130,10 +128,10 @@ class ArduinoSerial:
         with self.lock:
             if self.simulate:
                 # Return simulated values for sensor queries
-                if command.startswith("READ_ANALOG:0"):
+                if command.startswith("READ_ANALOG:A0"):
                     return str(self.sim_smoke_value)
-                elif command.startswith("READ_ANALOG:3"):
-                    return str(int(self.sim_temp_value * 10))  # Simulated raw value
+                elif command.startswith("READ_ANALOG:A3"):
+                    return str(int(self.sim_temp_value * 10))
                 return "0"
 
             try:
@@ -190,7 +188,7 @@ class ArduinoSerial:
         return self._send_command(command)
 
     # Read analog sensor value
-    def read_analog(self, pin: int) -> int:
+    def read_analog(self, pin) -> int:
         command = f"READ_ANALOG:{pin}\n"
         result = self._query_command(command)
         try:
@@ -955,7 +953,7 @@ class HardwareBridge:
             device.send_state()
 
         # Start Arduino reader for events
-        self.arduino.start_reader()
+        # self.arduino.start_reader()
         
         # Start device run loops
         for device in self.devices:

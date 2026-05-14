@@ -372,4 +372,281 @@ Arduino → Hardware Bridge → Server → Android UI
 
 ## Iteration 4 and 5 – Overview
 
-Iterations 4 and 5 are a single final phase: RBAC, more sensors, automation, unified UI, scenes, and speech-to-text. Full scope and technical approach: [docs/ITERATIONS_4_5.md](docs/ITERATIONS_4_5.md).
+Goal: extend the Interactive House system with automation, sensors, scenes, and role-based access control (RBAC), while improving the Web and Android user interfaces and integrating additional physical Arduino devices.
+
+Scope:
+
+- Existing Python TCP server (extended with automation and RBAC)
+- Existing Web and Android unit clients
+- Physical Arduino devices connected through the Python hardware bridge
+- Additional sensors and automation logic
+- Scene system and role-based permissions
+
+Focus:
+
+- Adding physical sensors: 
+    - Motion sensor
+    - Smoke sensor
+    - Temperature sensor
+    - Alarm/Buzzer
+
+- Adding automation rules: 
+    - Motion detected → lights ON
+    - Smoke detected → alarm ON
+    - High temperature → fan ON
+
+- Adding scene support:
+    - Good Morning scene
+    - Good Night scene
+
+- Adding role-based access control (RBAC):
+    - Admin users can control all devices
+    - Caregiver users have restricted access
+
+- UI redesign and improvements
+
+Not in scope:
+
+- Encryption / secure communication
+- Cloud deployment
+- Advanced AI decision-making
+
+### Run the web based client (React + Node Gateway) (Windows)
+
+#### start the python server
+
+```bash
+    cd server
+    pip install -r requirements.txt
+    python server.py
+```
+Demo login credentials (seeded):
+
+primary@email.com / primary123
+
+caregiver@email.com / caregiver123
+
+Note: This is login only (no sign-up). Users are seeded into SQLite on server startup.
+
+#### option A: Run with simulated hardware bridge (no Arduino required)
+
+This mode simulates the physical house but still uses the hardware bridge architecture.
+
+```bash
+    cd device
+    python hardw_bridge.py --simulate
+```
+
+#### option B: Run with real Arduino hardware
+
+- Upload Arduino firmware
+- Open main.cpp in Arduino IDE
+- Select board: Arduino UNO
+- Select correct port (e.g. COM7)
+- Upload the firmware to the board
+- Connect Arduino via USB
+- Start hardware bridge (real mode):
+
+```bash
+    cd device
+    python hardw_bridge.py --port COM7
+```
+
+#### Start the Node WebSocket Gateway (Browser ↔ TCP Bridge)
+
+```bash
+    cd webbasedclient/backend/gateway
+    npm install
+    npm start
+```
+
+#### Start the React Frontend
+
+```bash
+    cd webbasedclient/frontend
+    npm install
+    npm run dev
+```
+
+#### Test flow (Web UI)
+
+- Verify Connected: Yes
+- Login with one of the demo users
+- Refresh device list
+
+You should see devices such as:
+
+- LED 1
+- LED 2
+- Fan
+- Window (servo)
+- Door
+- Motion Sensor
+- Smoke Sensor
+- Temperature Sensor
+- Alarm
+
+Depending on the user role, some devices may be hidden.
+Caregiver cannot access window and door
+
+#### Interaction
+
+- Open a device → UI is rendered dynamically (device-provided UI)
+
+- Press buttons → actions flow:
+```bash
+Web UI → Gateway → Server → Hardware Bridge → Arduino → Physical Device
+```
+
+Device state updates are sent back:
+
+```bash
+Arduino → Hardware Bridge → Server → Web UI
+```
+
+### Scene Support
+
+Available scenes:
+
+- Good Morning
+- Good Night
+
+Scenes trigger multiple device actions simultaneously.
+
+Example:
+```bash
+Good Morning:
+- Open window
+- Turn on fan
+- Turn on lights
+```
+```bash
+Good Night:
+- Close window
+- Turn off fan
+- Turn off lights
+```
+
+### Automation Support
+
+Implemented automation rules:
+```bash
+    Motion detected → lights ON
+    Smoke detected → alarm ON
+    High temperature → fan ON
+```
+### Expected behavior
+- LED turns ON/OFF physically
+- Fan activates/deactivates
+- Window servo responds
+- Door servo responds
+- Alarm activates when smoke is detected
+- Fan activates automatically on high temperature
+- Sensor values update in the UI
+- Device state updates appear dynamically in Web UI
+- Scene buttons trigger multiple actions
+
+### Run the Android Client (Android Studio + Emulator) (Windows)
+
+#### start the python server
+
+```bash
+    cd server
+    pip install -r requirements.txt
+    python server.py
+```
+Demo login credentials (seeded):
+
+primary@email.com / primary123
+
+caregiver@email.com / caregiver123
+
+Note: This is login only (no sign-up). Users are seeded into SQLite on server startup.
+
+#### option A: Run with simulated hardware bridge (no Arduino required)
+
+This mode simulates the physical house but still uses the hardware bridge architecture.
+
+```bash
+    cd device
+    python hardw_bridge.py --simulate
+```
+
+#### option B: Run with real Arduino hardware
+
+- Upload Arduino firmware
+- Open main.cpp in Arduino IDE
+- Select board: Arduino UNO
+- Select correct port (e.g. COM7)
+- Upload the firmware to the board
+- Connect Arduino via USB
+- Start hardware bridge (real mode):
+
+```bash
+    cd device
+    python hardw_bridge.py --port COM7
+```
+
+#### Open the Android project in Android Studio and run the app
+
+#### Test flow (Android)
+
+- Login with one of the demo users
+- Refresh device list
+
+You should see devices such as:
+
+- LED 1
+- LED 2
+- Fan
+- Window (servo)
+- Door
+- Motion Sensor
+- Smoke Sensor
+- Temperature Sensor
+- Alarm
+
+Depending on the user role, some devices may be hidden.
+Caregiver cannot access window and door
+
+#### Interaction
+
+- Open a device → UI is rendered dynamically (device-provided UI)
+
+- Press buttons → actions flow:
+```bash
+Android UI → Server → Hardware Bridge → Arduino → Physical Device
+```
+
+Device state updates are sent back:
+
+```bash
+Arduino → Hardware Bridge → Server → Android UI
+```
+
+###Android UI Improvements
+
+The Android client now includes:
+
+- Redesigned device list screen
+- Device status cards
+- Dynamic sensor information
+- Improved device-specific layouts
+- Modernized styling and gradients
+- Scene buttons
+- Voice command support
+- Improved device icons and state indicators
+
+#### Expected behavior
+
+- LED turns ON/OFF physically
+- Fan activates/deactivates
+- Window and door servos respond
+- Alarm activates when smoke is detected
+- Fan activates automatically on high temperature
+- Sensor values update in the UI
+- Device states update dynamically
+- Scene buttons trigger multiple actions
+- RBAC restrictions apply depending on user role
+
+

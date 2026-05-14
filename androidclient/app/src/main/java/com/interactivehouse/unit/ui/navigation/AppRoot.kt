@@ -32,6 +32,7 @@ fun AppRoot(vm: SmartHomeViewModel) {
                 isLoading = state.isLoading,
                 error = state.error,
                 statusMessage = state.statusMessage,
+                userRole = state.userRole,
                 onRefresh = vm::loadDevices,
                 onSelect = vm::selectDevice,
                 onTriggerScene = vm::triggerScene,

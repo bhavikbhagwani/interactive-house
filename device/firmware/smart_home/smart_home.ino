@@ -162,9 +162,29 @@ void handleAlarm(String cmd) {
 
 void handleReadAnalog(String cmd) {
   int colon = cmd.indexOf(':');
-  int pin = cmd.substring(colon + 1).toInt();
+  String pinText = cmd.substring(colon + 1);
+  pinText.trim();
+
+  int pin;
+
+  if (pinText == "A0") {
+    pin = A0;
+  } else if (pinText == "A1") {
+    pin = A1;
+  } else if (pinText == "A2") {
+    pin = A2;
+  } else if (pinText == "A3") {
+    pin = A3;
+  } else if (pinText == "A4") {
+    pin = A4;
+  } else if (pinText == "A5") {
+    pin = A5;
+  } else {
+    pin = pinText.toInt();
+  }
+
   int value = analogRead(pin);
-  Serial.println("VALUE:" + String(pin) + ":" + String(value));
+  Serial.println("VALUE:" + pinText + ":" + String(value));
 }
 
 void handleReadDigital(String cmd) {

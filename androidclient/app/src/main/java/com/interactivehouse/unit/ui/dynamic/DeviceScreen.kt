@@ -423,12 +423,12 @@ private fun deviceIconRes(rawTitle: String): Int {
         "coffee" in t -> R.drawable.coffee_cup
 
         // Safe fallback icons because fan/window drawables caused build errors
-        "fan" in t -> R.drawable.lightbulb
-        "servo" in t || "window" in t -> R.drawable.lightbulb
-        "motion" in t -> R.drawable.lightbulb
-        "smoke" in t -> R.drawable.lightbulb
-        "temp" in t || "temperature" in t -> R.drawable.lightbulb
-        "alarm" in t || "buzzer" in t -> R.drawable.lightbulb
+        "fan" in t -> R.drawable.fan
+        "servo" in t || "window" in t -> R.drawable.window
+        "motion" in t -> R.drawable.motion_sensor
+        "smoke" in t -> R.drawable.vape
+        "temp" in t || "temperature" in t -> R.drawable.thermometer
+        "alarm" in t || "buzzer" in t -> R.drawable.siren
 
         else -> R.drawable.lightbulb
     }

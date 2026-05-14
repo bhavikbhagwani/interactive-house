@@ -37,6 +37,10 @@ export function useHouseClient(options = {}) {
   const [statusMsg, setStatusMsg] = useState("");
   const [actionPending, setActionPending] = useState(false);
 
+  const [scenePending, setScenePending] = useState(false);
+
+  const [role, setRole] = useState(null);
+
   const wsRef = useRef(null);
   const selectedDeviceIdRef = useRef(null);
 
@@ -56,6 +60,7 @@ export function useHouseClient(options = {}) {
           setStatusMsg("Login OK");
           setView(VIEW.DEVICES);
           wsRef.current?.send(buildGetDevices(senderId));
+          setRole(payload.role || null);
           return;
         }
 
@@ -109,6 +114,7 @@ export function useHouseClient(options = {}) {
         }
 
         case MSG.SCENE_TRIGGERED: {
+          setScenePending(false);
           setActionPending(false);
           setStatusMsg(payload.message || `Scene triggered: ${payload.sceneId}`);
           return;
@@ -142,6 +148,7 @@ export function useHouseClient(options = {}) {
 
         case MSG.ERROR: {
           setActionPending(false);
+          setScenePending(false);
           setStatusMsg(`Error: ${payload.message || "Unknown error"}`);
           return;
         }
@@ -205,6 +212,7 @@ export function useHouseClient(options = {}) {
   const sendScene = (sceneId) => {
     if (!sceneId) return;
 
+    setScenePending(true);
     setStatusMsg(`Triggering scene ${sceneId}...`);
     wsRef.current?.send(buildTriggerScene(senderId, sceneId));
   };
@@ -221,12 +229,13 @@ export function useHouseClient(options = {}) {
     latestState,
 
     actionPending,
-
+    scenePending,
     login,
     refreshDevices,
     openDevice,
     backToDevices,
     sendAction,
     sendScene,
+    role
   };
 }

@@ -1,6 +1,5 @@
 package com.interactivehouse.unit.ui
 
-
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.interactivehouse.unit.data.models.Device
@@ -11,13 +10,12 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-//import com.interactivehouse.unit.ui.voice.VoiceCommandProcessor
-
 
 data class UiState(
     val isLoggedIn: Boolean = false,
     val isLoading: Boolean = false,
     val loginError: String? = null,
+    val userRole: String? = null,
     val devices: List<Device> = emptyList(),
     val selectedDevice: Device? = null,
     val uiDefinition: UiDefinition? = null,
@@ -27,32 +25,43 @@ data class UiState(
     val statusMessage: String? = null
 )
 
-
 class SmartHomeViewModel(private val repo: SmartHomeRepository) : ViewModel() {
-
 
     private val _state = MutableStateFlow(UiState())
     val state: StateFlow<UiState> = _state.asStateFlow()
 
-
     private var updatesJob: Job? = null
-
-
-    //private val voiceProcessor = VoiceCommandProcessor()
-
 
     fun login(email: String, password: String) {
         viewModelScope.launch {
-            _state.update { it.copy(isLoading = true, loginError = null, error = null) }
-
+            _state.update {
+                it.copy(
+                    isLoading = true,
+                    loginError = null,
+                    error = null,
+                    statusMessage = null
+                )
+            }
 
             val ok = withContext(Dispatchers.IO) {
                 repo.login(email, password)
             }
 
-
             if (ok) {
-                _state.update { it.copy(isLoggedIn = true, isLoading = false) }
+                val role = if (email.equals("caregiver@email.com", ignoreCase = true)) {
+                    "caregiver"
+                } else {
+                    "admin"
+                }
+
+                _state.update {
+                    it.copy(
+                        isLoggedIn = true,
+                        isLoading = false,
+                        userRole = role
+                    )
+                }
+
                 loadDevices()
             } else {
                 _state.update {
@@ -65,16 +74,13 @@ class SmartHomeViewModel(private val repo: SmartHomeRepository) : ViewModel() {
         }
     }
 
-
     fun loadDevices() {
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true, error = null) }
 
-
             runCatching {
                 withContext(Dispatchers.IO) {
                     val devs = repo.getDevices()
-
 
                     val states = buildMap<String, Map<String, Any>> {
                         for (device in devs) {
@@ -84,7 +90,6 @@ class SmartHomeViewModel(private val repo: SmartHomeRepository) : ViewModel() {
                             }
                         }
                     }
-
 
                     devs to states
                 }
@@ -107,7 +112,6 @@ class SmartHomeViewModel(private val repo: SmartHomeRepository) : ViewModel() {
         }
     }
 
-
     fun selectDevice(device: Device) {
         viewModelScope.launch {
             _state.update {
@@ -120,7 +124,6 @@ class SmartHomeViewModel(private val repo: SmartHomeRepository) : ViewModel() {
                 )
             }
 
-
             runCatching {
                 withContext(Dispatchers.IO) {
                     repo.getUi(device.deviceId)
@@ -131,7 +134,6 @@ class SmartHomeViewModel(private val repo: SmartHomeRepository) : ViewModel() {
                     "UI initialState for ${device.deviceId} = ${ui.initialState}"
                 )
 
-
                 _state.update {
                     it.copy(
                         uiDefinition = ui,
@@ -139,7 +141,6 @@ class SmartHomeViewModel(private val repo: SmartHomeRepository) : ViewModel() {
                         deviceStates = it.deviceStates + (device.deviceId to ui.initialState)
                     )
                 }
-
 
                 updatesJob?.cancel()
                 updatesJob = launch {
@@ -160,19 +161,15 @@ class SmartHomeViewModel(private val repo: SmartHomeRepository) : ViewModel() {
         }
     }
 
-
     fun sendAction(action: String) {
         val device = _state.value.selectedDevice ?: return
-
 
         viewModelScope.launch(Dispatchers.IO) {
             runCatching {
                 repo.sendAction(device.deviceId, action)
 
-
                 val updatedUi = repo.getUi(device.deviceId)
                 val updatedState = updatedUi.initialState
-
 
                 _state.update { current ->
                     current.copy(
@@ -191,12 +188,10 @@ class SmartHomeViewModel(private val repo: SmartHomeRepository) : ViewModel() {
         }
     }
 
-
     fun triggerScene(sceneId: String) {
         viewModelScope.launch(Dispatchers.IO) {
             runCatching {
                 repo.triggerScene(sceneId)
-
 
                 _state.update {
                     it.copy(
@@ -211,7 +206,6 @@ class SmartHomeViewModel(private val repo: SmartHomeRepository) : ViewModel() {
             }
         }
     }
-
 
     fun sendVoiceCommand(text: String) {
         if (text.isBlank()) return
@@ -234,16 +228,13 @@ class SmartHomeViewModel(private val repo: SmartHomeRepository) : ViewModel() {
         }
     }
 
-
     fun clearStatusMessage() {
         _state.update { it.copy(statusMessage = null) }
     }
 
-
     fun clearError() {
         _state.update { it.copy(error = null, loginError = null) }
     }
-
 
     fun backToList() {
         updatesJob?.cancel()
@@ -256,5 +247,3 @@ class SmartHomeViewModel(private val repo: SmartHomeRepository) : ViewModel() {
         }
     }
 }
-
-

@@ -38,13 +38,17 @@ fun DeviceListScreen(
     isLoading: Boolean,
     error: String?,
     statusMessage: String?,
+    userRole: String?,
     onRefresh: () -> Unit,
     onSelect: (Device) -> Unit,
     onTriggerScene: (String) -> Unit,
     onVoiceCommand: (String) -> Unit,
     onClearMessage: () -> Unit
+
 ) {
     val context = LocalContext.current
+
+    val canUseScenesAndVoice = userRole != "caregiver"
 
     val speechLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
@@ -217,46 +221,50 @@ fun DeviceListScreen(
                             }
                         }
 
-                        item {
-                            Text(
-                                text = "Scenes",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        }
+                        if (canUseScenesAndVoice) {
 
-                        item {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                Button(
-                                    onClick = { onTriggerScene("good_morning") },
-                                    modifier = Modifier.weight(1f),
-                                    shape = RoundedCornerShape(16.dp)
+                            item {
+                                Text(
+                                    text = "Scenes",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+
+                            item {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                                 ) {
-                                    Text("Good Morning")
+                                    Button(
+                                        onClick = { onTriggerScene("good_morning") },
+                                        modifier = Modifier.weight(1f),
+                                        shape = RoundedCornerShape(16.dp)
+                                    ) {
+                                        Text("Good Morning")
+                                    }
+
+                                    Button(
+                                        onClick = { onTriggerScene("good_night") },
+                                        modifier = Modifier.weight(1f),
+                                        shape = RoundedCornerShape(16.dp)
+                                    ) {
+                                        Text("Good Night")
+                                    }
                                 }
+                            }
 
-                                Button(
-                                    onClick = { onTriggerScene("good_night") },
-                                    modifier = Modifier.weight(1f),
+                            item {
+                                OutlinedButton(
+                                    onClick = { launchSpeechInput() },
+                                    modifier = Modifier.fillMaxWidth(),
                                     shape = RoundedCornerShape(16.dp)
                                 ) {
-                                    Text("Good Night")
+                                    Text("Voice Command")
                                 }
                             }
                         }
 
-                        item {
-                            OutlinedButton(
-                                onClick = { launchSpeechInput() },
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(16.dp)
-                            ) {
-                                Text("Voice Command")
-                            }
-                        }
 
                         if (!isLoading && devices.isEmpty()) {
                             item {
@@ -356,12 +364,12 @@ private fun DeviceIcon(deviceType: String) {
         "coffee" in type -> R.drawable.coffee_cup
 
         // Safe fallback icons to avoid missing drawable errors
-        "fan" in type -> R.drawable.lightbulb
-        "servo" in type || "window" in type -> R.drawable.lightbulb
-        "motion" in type -> R.drawable.lightbulb
-        "smoke" in type -> R.drawable.lightbulb
-        "temp" in type || "temperature" in type -> R.drawable.lightbulb
-        "alarm" in type || "buzzer" in type -> R.drawable.lightbulb
+        "fan" in type -> R.drawable.fan
+        "servo" in type || "window" in type -> R.drawable.window
+        "motion" in type -> R.drawable.motion_sensor
+        "smoke" in type -> R.drawable.vape
+        "temp" in type || "temperature" in type -> R.drawable.thermometer
+        "alarm" in type || "buzzer" in type -> R.drawable.siren
 
         else -> R.drawable.lightbulb
     }
@@ -502,6 +510,7 @@ private fun DeviceListScreenPreview() {
             isLoading = false,
             error = null,
             statusMessage = "Scene triggered: good_night",
+            userRole = "admin",
             onRefresh = {},
             onSelect = {},
             onTriggerScene = {},

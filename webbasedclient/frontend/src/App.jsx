@@ -26,6 +26,8 @@ export default function App() {
         onRefresh={hc.refreshDevices}
         onOpenDevice={hc.openDevice}
         onTriggerScene={hc.sendScene}
+        scenePending={hc.scenePending}
+        role={hc.role}
       />
     );
   }

@@ -326,16 +326,23 @@ def run_automation_from_device_state(device_id, state):
     """Server-side rules when sensors push state (Iteration 4/5)."""
     if not isinstance(state, dict):
         return
+
     if state.get("motionDetected") is True:
         for lid in ("led-1", "led-2"):
             if lid in devices:
                 _forward_device_action(lid, "on", "automation")
+
     if state.get("motionDetected") is False:
         for lid in ("led-1", "led-2"):
             if lid in devices:
                 _forward_device_action(lid, "off", "automation")
-    if state.get("smokeDetected") is True and "alarm-1" in devices:
-        _forward_device_action("alarm-1", "on", "automation")
+
+    if "smokeDetected" in state and "alarm-1" in devices:
+        if state.get("smokeDetected") is True:
+            _forward_device_action("alarm-1", "on", "automation")
+        elif state.get("smokeDetected") is False:
+            _forward_device_action("alarm-1", "off", "automation")
+
     t = state.get("temperature")
     if isinstance(t, (int, float)) and t > 28.0 and "fan-1" in devices:
         _forward_device_action("fan-1", "on", "automation")

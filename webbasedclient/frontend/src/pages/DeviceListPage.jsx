@@ -5,7 +5,12 @@ export default function DeviceListPage({
   onRefresh,
   onOpenDevice,
   onTriggerScene,
+  scenePending,
+  role
 }) {
+
+  const canUseScenes = role !== "caregiver";
+
   const scenes = [
     { id: "good_morning", label: "Good Morning" },
     { id: "good_night", label: "Good Night" },
@@ -188,48 +193,56 @@ export default function DeviceListPage({
           style={{
             maxWidth: "680px",
             margin: "0 auto",
+            
           }}
         >
-          <div style={{ marginBottom: "22px" }}>
-            <div
-              style={{
-                fontSize: "18px",
-                fontWeight: 800,
-                color: "#1f2a5a",
-                marginBottom: "12px",
-              }}
-            >
-              Scenes
-            </div>
-
-            <div
-              style={{
-                display: "flex",
-                gap: "12px",
-                flexWrap: "wrap",
-              }}
-            >
-              {scenes.map((scene) => (
-                <button
-                  key={scene.id}
-                  onClick={() => onTriggerScene?.(scene.id)}
+          {canUseScenes && (
+              
+              <div style={{ marginBottom: "22px"}}>
+                <div
                   style={{
-                    flex: "1 1 180px",
-                    padding: "14px 16px",
-                    borderRadius: "18px",
-                    border: "none",
-                    background: "#dce6ff",
-                    color: "#1f2a5a",
-                    fontSize: "15px",
+                    fontSize: "18px",
                     fontWeight: 800,
-                    cursor: "pointer",
+                    color: "#1f2a5a",
+                    marginBottom: "12px",
+                    
                   }}
                 >
-                  {scene.label}
-                </button>
-              ))}
-            </div>
-          </div>
+                  Scenes
+                </div>
+
+                <div
+                  style={{
+                    display: "flex",
+                    gap: "12px",
+                    flexWrap: "wrap",
+                  }}
+                >
+                  {scenes.map((scene) => (
+                    <button
+                      key={scene.id}
+                      onClick={() => onTriggerScene?.(scene.id)}
+                      disabled={scenePending}
+                      style={{
+                        flex: "1 1 180px",
+                        padding: "14px 16px",
+                        borderRadius: "18px",
+                        border: "none",
+                        background: "#dce6ff",
+                        color: "#1f2a5a",
+                        fontSize: "15px",
+                        fontWeight: 800,
+                        cursor: "pointer",
+                      }}
+                    >
+                      {scenePending ? "Please wait..." : scene.label}
+                    </button>
+                  ))}
+                </div>
+              </div> 
+              
+
+            )}
 
           {devices && devices.length > 0 ? (
             <div
