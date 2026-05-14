@@ -21,6 +21,7 @@ export default function App() {
     return (
       <DeviceListPage
         devices={hc.devices}
+        deviceStates={hc.deviceStates}
         statusMsg={hc.statusMsg}
         onRefresh={hc.refreshDevices}
         onOpenDevice={hc.openDevice}

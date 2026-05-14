@@ -3,9 +3,15 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { WsClient } from "../api/wsClient";
-import { MSG, buildAction, buildGetDevices, buildGetUi, buildLogin, buildTriggerScene } from "../api/protocol";
+import {
+  MSG,
+  buildAction,
+  buildGetDevices,
+  buildGetUi,
+  buildLogin,
+  buildTriggerScene,
+} from "../api/protocol";
 
-// the routing states
 export const VIEW = {
   LOGIN: "login",
   DEVICES: "devices",
@@ -15,22 +21,20 @@ export const VIEW = {
 export function useHouseClient(options = {}) {
   const senderId = options.senderId || "web-1";
 
-  
   const wsUrl =
-    options.wsUrl ||
-    (import.meta?.env?.VITE_WS_URL ?? "ws://localhost:3001");
+    options.wsUrl || (import.meta?.env?.VITE_WS_URL ?? "ws://localhost:3001");
 
   const [connected, setConnected] = useState(false);
   const [view, setView] = useState(VIEW.LOGIN);
 
   const [devices, setDevices] = useState([]);
-  const [selectedDeviceId, setSelectedDeviceId] = useState(null);
+  const [deviceStates, setDeviceStates] = useState({});
 
+  const [selectedDeviceId, setSelectedDeviceId] = useState(null);
   const [uiItems, setUiItems] = useState([]);
   const [latestState, setLatestState] = useState({});
 
   const [statusMsg, setStatusMsg] = useState("");
-
   const [actionPending, setActionPending] = useState(false);
 
   const wsRef = useRef(null);
@@ -40,79 +44,115 @@ export function useHouseClient(options = {}) {
     selectedDeviceIdRef.current = selectedDeviceId;
   }, [selectedDeviceId]);
 
-  const handleMessage = useCallback((msg) => {
-    const type = msg?.type;
-    const payload = msg?.payload || {};
+  const handleMessage = useCallback(
+    (msg) => {
+      const type = msg?.type;
+      const payload = msg?.payload || {};
 
-    console.log("RECV:", type, msg);
+      console.log("RECV:", type, msg);
 
-    switch (type) {
-      case MSG.LOGIN_OK: {
-        setStatusMsg("Login OK");
-        setView(VIEW.DEVICES);
-        // after login, request device list
-        wsRef.current?.send(buildGetDevices(senderId));
-        return;
+      switch (type) {
+        case MSG.LOGIN_OK: {
+          setStatusMsg("Login OK");
+          setView(VIEW.DEVICES);
+          wsRef.current?.send(buildGetDevices(senderId));
+          return;
+        }
+
+        case MSG.LOGIN_FAILED: {
+          setStatusMsg("Login failed");
+          setView(VIEW.LOGIN);
+          return;
+        }
+
+        case MSG.DEVICE_LIST: {
+          const list = payload.devices || [];
+          setDevices(list);
+
+          const states = {};
+          for (const d of list) {
+            if (d.deviceId && d.state) {
+              states[d.deviceId] = d.state;
+            }
+          }
+
+          setDeviceStates((prev) => ({
+            ...prev,
+            ...states,
+          }));
+
+          setStatusMsg(`Received ${list.length} devices`);
+          return;
+        }
+
+        case MSG.UI_DEFINITION: {
+          const deviceId = payload.deviceId;
+          const ui = payload.ui || [];
+          const state = payload.state || {};
+
+          if (deviceId) {
+            setDeviceStates((prev) => ({
+              ...prev,
+              [deviceId]: {
+                ...(prev[deviceId] || {}),
+                ...state,
+              },
+            }));
+          }
+
+          setSelectedDeviceId(deviceId);
+          setUiItems(ui);
+          setLatestState(state);
+          setView(VIEW.DEVICE);
+          setStatusMsg(`Loaded UI for ${deviceId}`);
+          return;
+        }
+
+        case MSG.SCENE_TRIGGERED: {
+          setActionPending(false);
+          setStatusMsg(payload.message || `Scene triggered: ${payload.sceneId}`);
+          return;
+        }
+
+        case MSG.STATE_UPDATE: {
+          const deviceId = payload.deviceId;
+          const state = payload.state || {};
+
+          if (deviceId) {
+            setDeviceStates((prev) => ({
+              ...prev,
+              [deviceId]: {
+                ...(prev[deviceId] || {}),
+                ...state,
+              },
+            }));
+          }
+
+          if (
+            !selectedDeviceIdRef.current ||
+            deviceId === selectedDeviceIdRef.current
+          ) {
+            setLatestState((prev) => ({ ...prev, ...state }));
+            setActionPending(false);
+          }
+
+          setStatusMsg(`State update for ${deviceId || "device"}`);
+          return;
+        }
+
+        case MSG.ERROR: {
+          setActionPending(false);
+          setStatusMsg(`Error: ${payload.message || "Unknown error"}`);
+          return;
+        }
+
+        default: {
+          return;
+        }
       }
-
-      case MSG.LOGIN_FAILED: {
-        setStatusMsg("Login failed");
-        setView(VIEW.LOGIN);
-        return;
-      }
-
-      case MSG.DEVICE_LIST: {
-        const list = payload.devices || [];
-        setDevices(list);
-        setStatusMsg(`Received ${list.length} devices`);
-        return;
-      }
-
-      case MSG.UI_DEFINITION: {
-        const deviceId = payload.deviceId;
-        const ui = payload.ui || [];
-        const state = payload.state || {};
-
-        setSelectedDeviceId(deviceId);
-        setUiItems(ui);
-        setLatestState(state);
-        setView(VIEW.DEVICE);
-        setStatusMsg(`Loaded UI for ${deviceId}`);
-        return;
-      }
-
-      case MSG.SCENE_TRIGGERED: {
-        setActionPending(false);
-        setStatusMsg(payload.message || `Scene triggered: ${payload.sceneId}`);
-        return;
-      }
-
-      case MSG.STATE_UPDATE: {
-
-        const deviceId = payload.deviceId;
-        const state = payload.state || {};
-
-        // only apply updates for the currently open device
-        if (selectedDeviceIdRef.current && deviceId && deviceId !== selectedDeviceIdRef.current) return;
-
-        setLatestState((prev) => ({ ...prev, ...state }));
-        setActionPending(false);
-        setStatusMsg(`State update for ${deviceId || "device"}`);
-        return;
-      }
-
-      case MSG.ERROR: {
-        setActionPending(false);
-        setStatusMsg(`Error: ${payload.message || "Unknown error"}`);
-        return;
-      }
-
-      default: {
-        // Ignore unknown messages for now
-        return;
-      }
-    }
-  }, [senderId]);
+    },
+    [senderId]
+  );
 
   useEffect(() => {
     const client = new WsClient({
@@ -131,7 +171,6 @@ export function useHouseClient(options = {}) {
     };
   }, [handleMessage, wsUrl]);
 
-  // Actions (similar to send_json(...) in the CLI)
   const login = (email, password) => {
     setStatusMsg("Logging in...");
     wsRef.current?.send(buildLogin(senderId, email, password));
@@ -156,7 +195,8 @@ export function useHouseClient(options = {}) {
   };
 
   const sendAction = (action) => {
-  if (!selectedDeviceId || actionPending) return;
+    if (!selectedDeviceId || actionPending) return;
+
     setActionPending(true);
     setStatusMsg(`Sending action ${action}...`);
     wsRef.current?.send(buildAction(senderId, selectedDeviceId, action));
@@ -164,25 +204,24 @@ export function useHouseClient(options = {}) {
 
   const sendScene = (sceneId) => {
     if (!sceneId) return;
+
     setStatusMsg(`Triggering scene ${sceneId}...`);
     wsRef.current?.send(buildTriggerScene(senderId, sceneId));
   };
 
   return {
-    // connection + "routing"
     connected,
     view,
     statusMsg,
 
-    // data
     devices,
+    deviceStates,
     selectedDeviceId,
     uiItems,
     latestState,
 
     actionPending,
 
-    // actions
     login,
     refreshDevices,
     openDevice,

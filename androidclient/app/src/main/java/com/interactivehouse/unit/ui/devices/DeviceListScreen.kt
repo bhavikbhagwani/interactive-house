@@ -161,116 +161,119 @@ fun DeviceListScreen(
                 tonalElevation = 2.dp,
                 shadowElevation = 4.dp
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 18.dp, vertical = 20.dp)
-                ) {
-                    if (!error.isNullOrBlank()) {
-                        Card(
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.errorContainer
-                            ),
-                            shape = RoundedCornerShape(16.dp),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text(
-                                text = error,
-                                color = MaterialTheme.colorScheme.onErrorContainer,
-                                modifier = Modifier.padding(14.dp)
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.height(12.dp))
-                    }
-
-                    if (!statusMessage.isNullOrBlank()) {
-                        Card(
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.secondaryContainer
-                            ),
-                            shape = RoundedCornerShape(16.dp),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { onClearMessage() }
-                        ) {
-                            Text(
-                                text = statusMessage,
-                                color = MaterialTheme.colorScheme.onSecondaryContainer,
-                                modifier = Modifier.padding(14.dp)
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.height(12.dp))
-                    }
-
-                    Text(
-                        text = "Scenes",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold
-                    )
-
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                if (isLoading && devices.isEmpty()) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Button(
-                            onClick = { onTriggerScene("good_morning") },
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(16.dp)
-                        ) {
-                            Text("Good Morning")
-                        }
-
-                        Button(
-                            onClick = { onTriggerScene("good_night") },
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(16.dp)
-                        ) {
-                            Text("Good Night")
-                        }
+                        CircularProgressIndicator()
                     }
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    OutlinedButton(
-                        onClick = { launchSpeechInput() },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp)
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.spacedBy(14.dp),
+                        contentPadding = PaddingValues(
+                            start = 18.dp,
+                            end = 18.dp,
+                            top = 20.dp,
+                            bottom = 32.dp
+                        )
                     ) {
-                        Text("Voice Command")
-                    }
-
-                    Spacer(modifier = Modifier.height(18.dp))
-
-                    if (isLoading && devices.isEmpty()) {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CircularProgressIndicator()
+                        if (!error.isNullOrBlank()) {
+                            item {
+                                Card(
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = MaterialTheme.colorScheme.errorContainer
+                                    ),
+                                    shape = RoundedCornerShape(16.dp),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text(
+                                        text = error,
+                                        color = MaterialTheme.colorScheme.onErrorContainer,
+                                        modifier = Modifier.padding(14.dp)
+                                    )
+                                }
+                            }
                         }
-                    } else if (!isLoading && devices.isEmpty()) {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
+
+                        if (!statusMessage.isNullOrBlank()) {
+                            item {
+                                Card(
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = MaterialTheme.colorScheme.secondaryContainer
+                                    ),
+                                    shape = RoundedCornerShape(16.dp),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable { onClearMessage() }
+                                ) {
+                                    Text(
+                                        text = statusMessage,
+                                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                        modifier = Modifier.padding(14.dp)
+                                    )
+                                }
+                            }
+                        }
+
+                        item {
                             Text(
-                                text = "No devices available",
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                text = "Scenes",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold
                             )
                         }
-                    } else {
-                        LazyColumn(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .weight(1f),
-                            verticalArrangement = Arrangement.spacedBy(14.dp),
-                            contentPadding = PaddingValues(bottom = 32.dp)
-                        ) {
+
+                        item {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Button(
+                                    onClick = { onTriggerScene("good_morning") },
+                                    modifier = Modifier.weight(1f),
+                                    shape = RoundedCornerShape(16.dp)
+                                ) {
+                                    Text("Good Morning")
+                                }
+
+                                Button(
+                                    onClick = { onTriggerScene("good_night") },
+                                    modifier = Modifier.weight(1f),
+                                    shape = RoundedCornerShape(16.dp)
+                                ) {
+                                    Text("Good Night")
+                                }
+                            }
+                        }
+
+                        item {
+                            OutlinedButton(
+                                onClick = { launchSpeechInput() },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(16.dp)
+                            ) {
+                                Text("Voice Command")
+                            }
+                        }
+
+                        if (!isLoading && devices.isEmpty()) {
+                            item {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(top = 40.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "No devices available",
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        } else {
                             items(devices) { device ->
                                 val state = deviceStates[device.deviceId]
                                 val statusText = readableStatus(device.deviceType, state)
@@ -345,27 +348,20 @@ private fun StatusChip(text: String) {
 
 @Composable
 private fun DeviceIcon(deviceType: String) {
+    val type = deviceType.trim().lowercase()
+
     val iconRes = when {
-        deviceType.contains("led", ignoreCase = true) ||
-                deviceType.contains("light", ignoreCase = true) -> R.drawable.lightbulb
+        "led" in type || "light" in type -> R.drawable.lightbulb
+        "door" in type || "lock" in type -> R.drawable.door
+        "coffee" in type -> R.drawable.coffee_cup
 
-        deviceType.contains("door", ignoreCase = true) ||
-                deviceType.contains("lock", ignoreCase = true) -> R.drawable.door
-
-        deviceType.contains("coffee", ignoreCase = true) -> R.drawable.coffee_cup
-
-        // Safe fallback icons to avoid missing fan/window drawable errors
-        deviceType.contains("fan", ignoreCase = true) -> R.drawable.lightbulb
-        deviceType.contains("servo", ignoreCase = true) ||
-                deviceType.contains("window", ignoreCase = true) -> R.drawable.lightbulb
-
-        deviceType.contains("motion", ignoreCase = true) -> R.drawable.lightbulb
-        deviceType.contains("smoke", ignoreCase = true) -> R.drawable.lightbulb
-        deviceType.contains("temp", ignoreCase = true) ||
-                deviceType.contains("temperature", ignoreCase = true) -> R.drawable.lightbulb
-
-        deviceType.contains("alarm", ignoreCase = true) ||
-                deviceType.contains("buzzer", ignoreCase = true) -> R.drawable.lightbulb
+        // Safe fallback icons to avoid missing drawable errors
+        "fan" in type -> R.drawable.lightbulb
+        "servo" in type || "window" in type -> R.drawable.lightbulb
+        "motion" in type -> R.drawable.lightbulb
+        "smoke" in type -> R.drawable.lightbulb
+        "temp" in type || "temperature" in type -> R.drawable.lightbulb
+        "alarm" in type || "buzzer" in type -> R.drawable.lightbulb
 
         else -> R.drawable.lightbulb
     }
@@ -415,12 +411,10 @@ private fun readableStatus(
         "door" in type || "lock" in type -> when {
             state["locked"] == true -> "LOCKED"
             state["locked"] == false -> "UNLOCKED"
-
             state["doorState"] is String -> (state["doorState"] as String).uppercase()
             state["doorState"] == 0 || state["doorState"] == 0.0 -> "CLOSE"
             state["doorState"] == 180 || state["doorState"] == 180.0 -> "OPEN"
             state["doorState"] == 90 || state["doorState"] == 90.0 -> "STOP"
-
             else -> "Unknown"
         }
 
@@ -508,25 +502,6 @@ private fun DeviceListScreenPreview() {
             isLoading = false,
             error = null,
             statusMessage = "Scene triggered: good_night",
-            onRefresh = {},
-            onSelect = {},
-            onTriggerScene = {},
-            onVoiceCommand = {},
-            onClearMessage = {}
-        )
-    }
-}
-
-@Preview(showBackground = true, showSystemUi = true)
-@Composable
-private fun DeviceListScreenEmptyPreview() {
-    MaterialTheme {
-        DeviceListScreen(
-            devices = emptyList(),
-            deviceStates = emptyMap(),
-            isLoading = false,
-            error = null,
-            statusMessage = null,
             onRefresh = {},
             onSelect = {},
             onTriggerScene = {},

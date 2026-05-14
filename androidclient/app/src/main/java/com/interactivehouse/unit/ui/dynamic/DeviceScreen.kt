@@ -260,7 +260,6 @@ private fun SmartControls(
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         visibleControls.forEach { control ->
-
             val disabledFromRule = control.disabledWhen?.let { rule ->
                 val value = latestState[rule.stateKey]
                 (value is Boolean) && (value == rule.equals)
@@ -406,8 +405,8 @@ private fun readableState(rawTitle: String, latestState: Map<String, Any>): Stri
         }
 
         "alarm" in t || "buzzer" in t -> when {
-            latestState["alarmOn"] == true -> "On"
-            latestState["alarmOn"] == false -> "Off"
+            latestState["alarmOn"] == true || latestState["buzzerOn"] == true -> "On"
+            latestState["alarmOn"] == false || latestState["buzzerOn"] == false -> "Off"
             else -> "Unknown"
         }
 
@@ -426,7 +425,6 @@ private fun deviceIconRes(rawTitle: String): Int {
         // Safe fallback icons because fan/window drawables caused build errors
         "fan" in t -> R.drawable.lightbulb
         "servo" in t || "window" in t -> R.drawable.lightbulb
-
         "motion" in t -> R.drawable.lightbulb
         "smoke" in t -> R.drawable.lightbulb
         "temp" in t || "temperature" in t -> R.drawable.lightbulb
