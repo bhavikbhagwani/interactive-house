@@ -19,6 +19,7 @@ export const MSG = {
 
   ACTION: "action",
   TRIGGER_SCENE: "trigger_scene",
+  SCENE_TRIGGERED: "scene_triggered",
   STATE_UPDATE: "state_update",
 
   ERROR: "error",

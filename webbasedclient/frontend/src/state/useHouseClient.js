@@ -81,6 +81,12 @@ export function useHouseClient(options = {}) {
         return;
       }
 
+      case MSG.SCENE_TRIGGERED: {
+        setActionPending(false);
+        setStatusMsg(payload.message || `Scene triggered: ${payload.sceneId}`);
+        return;
+      }
+
       case MSG.STATE_UPDATE: {
 
         const deviceId = payload.deviceId;

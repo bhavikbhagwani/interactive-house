@@ -25,3 +25,5 @@ __pycache__/
 # --- PlatformIO ---
 firmware/ .pio
 firmware/ .vscode
+
+hs_err_pid*.log

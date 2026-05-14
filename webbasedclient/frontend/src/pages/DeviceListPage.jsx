@@ -133,7 +133,7 @@ export default function DeviceListPage({
                       marginBottom: "6px",
                     }}
                   >
-                    {getDeviceTypeLabel(d)}
+                    {getDeviceTypeLabel(d.deviceType)}
                   </div>
                   <div
                     style={{

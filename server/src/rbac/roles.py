@@ -59,8 +59,6 @@ _CAREGIVER_PERMS = frozenset({
     Permission.DEVICE_CONTROL,
     Permission.SCENE_VIEW,
     Permission.SCENE_TRIGGER,
-    Permission.SCENE_CREATE,
-    Permission.SCENE_DELETE,
     Permission.SENSOR_VIEW,
     Permission.AUTOMATION_VIEW,
 })

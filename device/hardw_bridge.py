@@ -152,7 +152,8 @@ class ArduinoSerial:
                 
                 # Parse response like "VALUE:123"
                 if response.startswith("VALUE:"):
-                    return response.split(":")[1]
+                    parts = response.split(":")
+                    return parts[-1]
                 return response
             except Exception as e:
                 print(f"[Arduino] Error querying: {e}")
@@ -955,18 +956,18 @@ class HardwareBridge:
 
         # Start Arduino reader for events
         self.arduino.start_reader()
-
-        # Start sensor polling threads
-        if self.smoke_device:
-            self.smoke_device.start_polling()
-        if self.temp_device:
-            self.temp_device.start_polling()
         
         # Start device run loops
         for device in self.devices:
             thread = threading.Thread(target=device.run, daemon=True)
             thread.start()
             self.threads.append(thread)
+        
+        # Start sensor polling threads
+        if self.smoke_device:
+            self.smoke_device.start_polling()
+        if self.temp_device:
+            self.temp_device.start_polling()
         
         print(f"\n[Bridge] All devices connected. Waiting for commands...\n")
         

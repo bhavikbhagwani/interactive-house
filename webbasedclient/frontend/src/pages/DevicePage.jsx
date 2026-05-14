@@ -2,7 +2,8 @@ function getReadableState(deviceId, state) {
   if (!state) return "Unknown";
 
   if (deviceId?.startsWith("led")) {
-    return state.ledOn ?? state.lightOn ? "LED is ON" : "LED is OFF";
+        const isOn = state.ledOn ?? state.lightOn;
+        return isOn ? "LED is ON" : "LED is OFF";
   }
 
   if (deviceId?.startsWith("light")) {

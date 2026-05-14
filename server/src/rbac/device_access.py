@@ -23,7 +23,7 @@ _ROLE_DEVICE_ALLOWLIST: Dict[str, Optional[Set[str]]] = {
     ROLE_ADMIN: None,
     ROLE_CAREGIVER: {
         "led", "fan", "sensor", "light", "lamp", "smoke", "temp",
-        "temperature", "humidity", "motion", "alarm", "unknown",
+        "temperature", "humidity", "motion", "alarm",
     },
 }
 

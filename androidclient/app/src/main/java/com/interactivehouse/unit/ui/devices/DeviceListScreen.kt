@@ -265,8 +265,11 @@ fun DeviceListScreen(
                         }
                     } else {
                         LazyColumn(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(1f),
                             verticalArrangement = Arrangement.spacedBy(14.dp),
-                            contentPadding = PaddingValues(bottom = 20.dp)
+                            contentPadding = PaddingValues(bottom = 32.dp)
                         ) {
                             items(devices) { device ->
                                 val state = deviceStates[device.deviceId]

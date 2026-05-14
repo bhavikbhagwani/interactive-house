@@ -256,16 +256,21 @@ def _device_type_for(device_id: str):
 
 def _state_dict_to_action(state):
     if isinstance(state, str):
-        return state
+        return state.upper()
+
     if not isinstance(state, dict):
         return None
+
     if "action" in state:
-        return state["action"]
+        return str(state["action"]).upper()
+
     if "lightOn" in state:
-        return "on" if state.get("lightOn") else "off"
+        return "ON" if state.get("lightOn") else "OFF"
+
     p = state.get("power")
     if isinstance(p, str):
-        return p.lower()
+        return p.upper()
+
     return None
 
 
@@ -486,6 +491,19 @@ def handle_voice_command_message(sock, unit_id, payload):
             return
         device_id = intent.get("deviceId")
         action = intent.get("action")
+
+        if not device_id or not action:
+            send_error(sock, "Could not parse device action from voice")
+            return
+
+        action = str(action).upper()
+
+        if str(device_id).startswith("door"):
+            if action == "LOCK":
+                action = "CLOSE"
+            elif action == "UNLOCK":
+                action = "OPEN"
+
         if not device_id or not action:
             send_error(sock, "Could not parse device action from voice")
             return
