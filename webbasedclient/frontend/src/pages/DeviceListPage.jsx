@@ -35,7 +35,7 @@ export default function DeviceListPage({
     if (type.includes("motion")) return "Motion Sensor";
     if (type.includes("smoke")) return "Smoke Sensor";
     if (type.includes("temp") || type.includes("temperature"))
-      return "Temperature Sensor";
+      return "Steam Sensor";
     if (type.includes("alarm") || type.includes("buzzer")) return "Alarm";
     if (type.includes("coffee")) return "Coffee Machine";
 
@@ -99,7 +99,7 @@ export default function DeviceListPage({
     }
 
     if (type.includes("temp") || type.includes("temperature")) {
-      return `${state.temperature ?? "--"}°C`;
+      return `Level: ${state.temperature}`;
     }
 
     if (type.includes("alarm") || type.includes("buzzer")) {

@@ -33,7 +33,7 @@ FAN_DEVICES = [
 
 # Window servo
 SERVO_DEVICES = [
-    {"id": "servo-1", "name": "Window Servo", "pin": 10, "open_angle": 90, "close_angle": 0},
+    {"id": "servo-1", "name": "Window", "pin": 10, "open_angle": 90, "close_angle": 0},
 ]
 
 # Door servo
@@ -42,9 +42,9 @@ DOOR_DEVICES = [
 ]
 
 # Motion Sensor (PIR)
-MOTION_SENSOR_DEVICES = [
-    {"id": "motion-sensor-1", "name": "Motion Sensor", "pin": 2},
-]
+# MOTION_SENSOR_DEVICES = [
+#     {"id": "motion-sensor-1", "name": "Motion Sensor", "pin": 2},
+# ]
 
 SMOKE_SENSOR_DEVICES = [
     {"id": "smoke-sensor-1", "name": "Smoke Sensor", "pin": "A0", "threshold": 130},
@@ -526,39 +526,39 @@ class FanDevice(BaseDevice):
 
 
 # MOTION SENSOR DEVICE
-class MotionSensorDevice(BaseDevice):
-    def __init__(self, device_id: str, name: str, pin: int, arduino: ArduinoSerial):
-        super().__init__(device_id, name, pin, arduino)
-        self.motion_detected = False
+# class MotionSensorDevice(BaseDevice):
+#     def __init__(self, device_id: str, name: str, pin: int, arduino: ArduinoSerial):
+#         super().__init__(device_id, name, pin, arduino)
+#         self.motion_detected = False
 
-    def send_register(self):
-        msg = {
-            "type": "register_device",
-            "sender_id": self.device_id,
-            "payload": {"deviceType": "motion_sensor"}
-        }
-        send_json(self.sock, msg)
-        print(f"[{self.device_id}] Registered as motion sensor device")
+#     def send_register(self):
+#         msg = {
+#             "type": "register_device",
+#             "sender_id": self.device_id,
+#             "payload": {"deviceType": "motion_sensor"}
+#         }
+#         send_json(self.sock, msg)
+#         print(f"[{self.device_id}] Registered as motion sensor device")
 
-    def send_ui_definition(self):
-        msg = {
-            "type": "ui_definition",
-            "sender_id": self.device_id,
-            "payload": {"ui": []}  # No UI controls for sensor
-        }
-        send_json(self.sock, msg)
+#     def send_ui_definition(self):
+#         msg = {
+#             "type": "ui_definition",
+#             "sender_id": self.device_id,
+#             "payload": {"ui": []}  # No UI controls for sensor
+#         }
+#         send_json(self.sock, msg)
 
-    def send_state(self):
-        msg = {
-            "type": "device_state",
-            "sender_id": self.device_id,
-            "payload": {"state": {"motionDetected": self.motion_detected}}
-        }
-        send_json(self.sock, msg)
-        print(f"[{self.device_id}] Motion: {self.motion_detected}")
+#     def send_state(self):
+#         msg = {
+#             "type": "device_state",
+#             "sender_id": self.device_id,
+#             "payload": {"state": {"motionDetected": self.motion_detected}}
+#         }
+#         send_json(self.sock, msg)
+#         print(f"[{self.device_id}] Motion: {self.motion_detected}")
 
-    def handle_action(self, action: str):
-        print(f"[{self.device_id}] Motion sensor does not support actions")
+#     def handle_action(self, action: str):
+#         print(f"[{self.device_id}] Motion sensor does not support actions")
 
 
 # SMOKE SENSOR DEVICE (MQ-2)
@@ -657,7 +657,7 @@ class TemperatureSensorDevice(BaseDevice):
             "sender_id": self.device_id,
             "payload": {
                 "state": {
-                    "temperature": self.temperature,
+                    "steamLevel": self.temperature,
                     "status": self.status,
                     "thresholdHigh": self.threshold_high,
                     "thresholdLow": self.threshold_low
@@ -835,15 +835,15 @@ class HardwareBridge:
             self.devices.append(device)
         
         # Create Motion Sensor devices
-        for config in MOTION_SENSOR_DEVICES:
-            device = MotionSensorDevice(
-                device_id=config["id"],
-                name=config["name"],
-                pin=config["pin"],
-                arduino=self.arduino
-            )
-            self.devices.append(device)
-            self.motion_device = device
+        # for config in MOTION_SENSOR_DEVICES:
+        #     device = MotionSensorDevice(
+        #         device_id=config["id"],
+        #         name=config["name"],
+        #         pin=config["pin"],
+        #         arduino=self.arduino
+        #     )
+        #     self.devices.append(device)
+        #     self.motion_device = device
 
         # Create Smoke Sensor devices
         for config in SMOKE_SENSOR_DEVICES:

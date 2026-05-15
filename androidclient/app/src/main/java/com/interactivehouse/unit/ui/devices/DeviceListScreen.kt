@@ -446,7 +446,7 @@ private fun readableStatus(
 
         "temp" in type || "temperature" in type -> {
             val temp = state["temperature"]
-            if (temp != null) "$temp °C" else "Unknown"
+            if (temp != null) "Level: $temp" else "Unknown"
         }
 
         "alarm" in type || "buzzer" in type -> when {
@@ -479,7 +479,7 @@ private fun friendlyName(deviceType: String, deviceId: String): String {
         "coffee" in type -> "Coffee Machine"
         "motion" in type -> "Motion Sensor"
         "smoke" in type -> "Smoke Sensor"
-        "temp" in type || "temperature" in type -> "Temperature Sensor"
+        "temp" in type || "temperature" in type -> "Steam Sensor"
         "alarm" in type || "buzzer" in type -> "Alarm"
 
         else -> deviceType

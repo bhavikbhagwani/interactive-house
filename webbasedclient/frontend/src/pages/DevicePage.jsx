@@ -53,8 +53,8 @@ function getDeviceInfo(deviceId) {
 
   if (id.startsWith("temp") || id.startsWith("temperature")) {
     return {
-      title: "Temperature Sensor",
-      subtitle: "Monitor room temperature",
+      title: "Steam Sensor",
+      subtitle: "Monitor humidity",
       icon: "🌡️",
     };
   }
@@ -129,7 +129,7 @@ function getReadableState(deviceId, state) {
   }
 
   if (id.startsWith("temp") || id.startsWith("temperature")) {
-    return state.temperature !== undefined ? `${state.temperature}°C` : "Unknown";
+    return state.temperature !== undefined ? `Level: ${state.temperature}` : "Unknown";
   }
 
   if (id.startsWith("alarm") || id.startsWith("buzzer")) {

@@ -320,7 +320,7 @@ private fun friendlyDeviceName(rawTitle: String): String {
         "coffee" in t -> "Coffee Machine"
         "motion" in t -> "Motion Sensor"
         "smoke" in t -> "Smoke Sensor"
-        "temp" in t || "temperature" in t -> "Temperature Sensor"
+        "temp" in t || "temperature" in t -> "Steam Sensor"
         "alarm" in t || "buzzer" in t -> "Alarm"
 
         else -> rawTitle
@@ -338,7 +338,7 @@ private fun deviceSubtitle(rawTitle: String): String {
         "coffee" in t -> "Start your coffee anytime"
         "motion" in t -> "Monitor room movement"
         "smoke" in t -> "Monitor smoke detection"
-        "temp" in t || "temperature" in t -> "Monitor room temperature"
+        "temp" in t || "temperature" in t -> "Monitor humidity"
         "alarm" in t || "buzzer" in t -> "Monitor or control alarm status"
 
         else -> "Control your connected device"
@@ -401,7 +401,7 @@ private fun readableState(rawTitle: String, latestState: Map<String, Any>): Stri
 
         "temp" in t || "temperature" in t -> {
             val temp = latestState["temperature"]
-            if (temp != null) "$temp °C" else "Unknown"
+            if (temp != null) "Level: $temp" else "Unknown"
         }
 
         "alarm" in t || "buzzer" in t -> when {
