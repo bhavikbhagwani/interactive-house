@@ -47,11 +47,11 @@ DOOR_DEVICES = [
 # ]
 
 SMOKE_SENSOR_DEVICES = [
-    {"id": "smoke-sensor-1", "name": "Smoke Sensor", "pin": "A0", "threshold": 130},
+    {"id": "smoke-sensor-1", "name": "Smoke Sensor", "pin": "A0", "threshold": 180},
 ]
 
 TEMPERATURE_SENSOR_DEVICES = [
-    {"id": "temp-sensor-1", "name": "Temperature Sensor", "pin": "A3", "threshold_high": 30, "threshold_low": 18},
+    {"id": "temp-sensor-1", "name": "Temperature Sensor", "pin": "A3", "threshold_high": 20, "threshold_low": 8},
 ]
 
 # Alarm/Buzzer
@@ -434,7 +434,7 @@ class DoorDevice(BaseDevice):
         ui = [
             {"type": "button", "action": "OPEN", "label": f"{self.name} OPEN"},
             {"type": "button", "action": "CLOSE", "label": f"{self.name} CLOSE"},
-            {"type": "button", "action": "STOP", "label": f"{self.name} STOP"},
+            # {"type": "button", "action": "STOP", "label": f"{self.name} STOP"},
         ]
         msg = {
             "type": "ui_definition",
@@ -717,9 +717,7 @@ class AlarmDevice(BaseDevice):
 
     def send_ui_definition(self):
         ui = [
-            {"type": "button", "action": "ON", "label": f"{self.name} ON"},
             {"type": "button", "action": "OFF", "label": f"{self.name} OFF"},
-            {"type": "button", "action": "TEST", "label": f"{self.name} TEST"},
         ]
         msg = {
             "type": "ui_definition",

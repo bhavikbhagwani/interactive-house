@@ -177,7 +177,7 @@ class SmartHomeViewModel(private val repo: SmartHomeRepository) : ViewModel() {
                         latestState = updatedState,
                         deviceStates = current.deviceStates + (device.deviceId to updatedState),
                         error = null,
-                        statusMessage = "Action sent: $action"
+                        statusMessage = null
                     )
                 }
             }.onFailure { e ->
@@ -196,7 +196,7 @@ class SmartHomeViewModel(private val repo: SmartHomeRepository) : ViewModel() {
                 _state.update {
                     it.copy(
                         error = null,
-                        statusMessage = "Scene triggered: $sceneId"
+                        statusMessage = null
                     )
                 }
             }.onFailure { e ->
@@ -217,7 +217,7 @@ class SmartHomeViewModel(private val repo: SmartHomeRepository) : ViewModel() {
                 _state.update {
                     it.copy(
                         error = null,
-                        statusMessage = "Voice command sent: $text"
+                        statusMessage = null
                     )
                 }
             }.onFailure { e ->

@@ -445,8 +445,8 @@ private fun readableStatus(
         }
 
         "temp" in type || "temperature" in type -> {
-            val temp = state["temperature"]
-            if (temp != null) "Level: $temp" else "Unknown"
+            val level = state["steamLevel"] ?: state["temperature"]
+            if (level != null) "Level: $level" else "Unknown"
         }
 
         "alarm" in type || "buzzer" in type -> when {

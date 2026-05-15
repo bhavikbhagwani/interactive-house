@@ -1,3 +1,13 @@
+import doorIcon from "../assets/door.png"
+import lightIcon from "../assets/lightbulb.png"
+import fanIcon from "../assets/fan.png"
+import alarmIcon from "../assets/siren.png"
+import steamIcon from "../assets/thermometer.png"
+import motionIcon from "../assets/motion_sensor.png"
+import smokeIcon from "../assets/vape.png"
+import windowIcon from "../assets/window.png"
+
+
 function getDeviceInfo(deviceId) {
   const id = deviceId?.toLowerCase() || "";
 
@@ -6,7 +16,7 @@ function getDeviceInfo(deviceId) {
     return {
       title: id.startsWith("led") ? `LED Light ${number || ""}` : "Light",
       subtitle: "Control the room lighting",
-      icon: "💡",
+      icon: lightIcon,
     };
   }
 
@@ -14,7 +24,7 @@ function getDeviceInfo(deviceId) {
     return {
       title: "Door Lock",
       subtitle: "Manage your home access",
-      icon: "🚪",
+      icon: doorIcon,
     };
   }
 
@@ -23,7 +33,7 @@ function getDeviceInfo(deviceId) {
     return {
       title: `Fan ${number || ""}`,
       subtitle: "Control the fan",
-      icon: "🌀",
+      icon: fanIcon,
     };
   }
 
@@ -31,7 +41,7 @@ function getDeviceInfo(deviceId) {
     return {
       title: "Window",
       subtitle: "Open or close the window",
-      icon: "🪟",
+      icon: windowIcon,
     };
   }
 
@@ -39,7 +49,7 @@ function getDeviceInfo(deviceId) {
     return {
       title: "Motion Sensor",
       subtitle: "Monitor room movement",
-      icon: "🚶",
+      icon: motionIcon,
     };
   }
 
@@ -47,7 +57,7 @@ function getDeviceInfo(deviceId) {
     return {
       title: "Smoke Sensor",
       subtitle: "Monitor smoke detection",
-      icon: "💨",
+      icon: smokeIcon,
     };
   }
 
@@ -55,7 +65,7 @@ function getDeviceInfo(deviceId) {
     return {
       title: "Steam Sensor",
       subtitle: "Monitor humidity",
-      icon: "🌡️",
+      icon: steamIcon,
     };
   }
 
@@ -63,7 +73,7 @@ function getDeviceInfo(deviceId) {
     return {
       title: "Alarm",
       subtitle: "Monitor or control the alarm",
-      icon: "🚨",
+      icon: alarmIcon,
     };
   }
 
@@ -71,7 +81,7 @@ function getDeviceInfo(deviceId) {
     return {
       title: "Coffee Machine",
       subtitle: "Control the coffee machine",
-      icon: "☕",
+      icon: lightIcon,
     };
   }
 
@@ -129,7 +139,8 @@ function getReadableState(deviceId, state) {
   }
 
   if (id.startsWith("temp") || id.startsWith("temperature")) {
-    return state.temperature !== undefined ? `Level: ${state.temperature}` : "Unknown";
+    const level = state.steamLevel ?? state.temperature;
+    return level !== undefined ? `Level: ${level}` : "Unknown";
   }
 
   if (id.startsWith("alarm") || id.startsWith("buzzer")) {
@@ -201,7 +212,15 @@ export default function DevicePage({
                 marginBottom: "14px",
               }}
             >
-              {deviceInfo.icon}
+              <img
+                  src={deviceInfo.icon}
+                  alt="device icon"
+                  style={{
+                    width: "28px",
+                    height: "28px",
+                    objectFit: "contain",
+                  }}
+                />
             </div>
 
             <h1
@@ -287,7 +306,15 @@ export default function DevicePage({
                 flexShrink: 0,
               }}
             >
-              {deviceInfo.icon}
+              <img
+                  src={deviceInfo.icon}
+                  alt="device icon"
+                  style={{
+                    width: "28px",
+                    height: "28px",
+                    objectFit: "contain",
+                  }}
+                />
             </div>
 
             <div>
@@ -401,35 +428,6 @@ export default function DevicePage({
             )}
           </div>
 
-          <div
-            style={{
-              marginTop: "24px",
-              padding: "16px 18px",
-              borderRadius: "18px",
-              background: "#eef1fa",
-              border: "1px solid #d9deee",
-            }}
-          >
-            <div
-              style={{
-                color: "#1f2a5a",
-                fontWeight: 800,
-                marginBottom: "6px",
-              }}
-            >
-              Status
-            </div>
-
-            <div
-              style={{
-                color: "#5b6478",
-                fontSize: "14px",
-                lineHeight: 1.5,
-              }}
-            >
-              {statusMsg || "Device actions and updates will appear here."}
-            </div>
-          </div>
         </div>
       </div>
     </div>

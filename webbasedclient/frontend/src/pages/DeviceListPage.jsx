@@ -1,3 +1,12 @@
+import doorIcon from "../assets/door.png"
+import lightIcon from "../assets/lightbulb.png"
+import fanIcon from "../assets/fan.png"
+import alarmIcon from "../assets/siren.png"
+import steamIcon from "../assets/thermometer.png"
+import motionIcon from "../assets/motion_sensor.png"
+import smokeIcon from "../assets/vape.png"
+import windowIcon from "../assets/window.png"
+
 export default function DeviceListPage({
   devices,
   deviceStates,
@@ -45,16 +54,15 @@ export default function DeviceListPage({
   function getDeviceIcon(deviceType) {
     const type = deviceType?.toLowerCase() || "";
 
-    if (type.includes("door")) return "🚪";
-    if (type.includes("fan")) return "🌀";
-    if (type.includes("servo") || type.includes("window")) return "🪟";
-    if (type.includes("motion")) return "🚶";
-    if (type.includes("smoke")) return "💨";
-    if (type.includes("temp") || type.includes("temperature")) return "🌡️";
-    if (type.includes("alarm") || type.includes("buzzer")) return "🚨";
-    if (type.includes("coffee")) return "☕";
+    if (type.includes("door")) return doorIcon;
+    if (type.includes("fan")) return fanIcon;
+    if (type.includes("servo") || type.includes("window")) return windowIcon;
+    if (type.includes("motion")) return motionIcon;
+    if (type.includes("smoke")) return smokeIcon;
+    if (type.includes("temp") || type.includes("temperature")) return steamIcon;
+    if (type.includes("alarm") || type.includes("buzzer")) return alarmIcon;
 
-    return "💡";
+    return lightIcon;
   }
 
   function getStatusText(deviceType, state) {
@@ -99,7 +107,8 @@ export default function DeviceListPage({
     }
 
     if (type.includes("temp") || type.includes("temperature")) {
-      return `Level: ${state.temperature}`;
+      const level = state.steamLevel ?? state.temperature;
+      return level !== undefined ? `Level: ${level}` : "Unknown";
     }
 
     if (type.includes("alarm") || type.includes("buzzer")) {
@@ -286,7 +295,15 @@ export default function DeviceListPage({
                         flexShrink: 0,
                       }}
                     >
-                      {getDeviceIcon(d.deviceType)}
+                      <img
+                          src={getDeviceIcon(d.deviceType)}
+                          alt="device icon"
+                          style={{
+                            width: "28px",
+                            height: "28px",
+                            objectFit: "contain",
+                          }}
+                        />
                     </div>
 
                     <div>
@@ -344,35 +361,6 @@ export default function DeviceListPage({
             </div>
           )}
 
-          <div
-            style={{
-              marginTop: "24px",
-              padding: "16px 18px",
-              borderRadius: "18px",
-              background: "#eef1fa",
-              border: "1px solid #d9deee",
-            }}
-          >
-            <div
-              style={{
-                color: "#1f2a5a",
-                fontWeight: 800,
-                marginBottom: "6px",
-              }}
-            >
-              Status
-            </div>
-
-            <div
-              style={{
-                color: "#5b6478",
-                fontSize: "14px",
-                lineHeight: 1.5,
-              }}
-            >
-              {statusMsg || "Available devices will appear here."}
-            </div>
-          </div>
         </div>
       </div>
     </div>

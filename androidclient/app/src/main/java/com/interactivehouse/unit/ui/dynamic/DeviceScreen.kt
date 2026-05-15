@@ -400,8 +400,8 @@ private fun readableState(rawTitle: String, latestState: Map<String, Any>): Stri
         }
 
         "temp" in t || "temperature" in t -> {
-            val temp = latestState["temperature"]
-            if (temp != null) "Level: $temp" else "Unknown"
+            val level = latestState["steamLevel"] ?: latestState["temperature"]
+            if (level != null) "Level: $level" else "Unknown"
         }
 
         "alarm" in t || "buzzer" in t -> when {

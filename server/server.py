@@ -16,7 +16,8 @@ def main():
 
     print(f"Server running on 0.0.0.0:{PORT}")
     initialize_db()
-    print("Demo login: email: user@email.com, password: user123")
+    print("Login Credentials for primary user: email: primary@email.com, password: primary123")
+    print("Login Credentials for caregiver: email: caregiver@email.com, password: caregiver123")
     while True:
         client_sock, addr = server_sock.accept()
         threading.Thread(

@@ -343,7 +343,8 @@ def run_automation_from_device_state(device_id, state):
         elif state.get("smokeDetected") is False:
             _forward_device_action("alarm-1", "off", "automation")
 
-    t = state.get("temperature")
+    t = state.get("steamLevel", state.get("temperature"))
+
     if isinstance(t, (int, float)) and t > 28.0 and "fan-1" in devices:
         _forward_device_action("fan-1", "on", "automation")
 
