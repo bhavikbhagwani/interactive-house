@@ -158,6 +158,27 @@ function getReadableState(deviceId, state) {
   return "Unknown";
 }
 
+function formatStateLabel(key) {
+  const labels = {
+    smokeLevel: "Smoke Level",
+    smokeDetected: "Smoke Detected",
+    threshold: "Threshold",
+    steamLevel: "Steam Level",
+    status: "Status",
+    thresholdHigh: "High Threshold",
+    thresholdLow: "Low Threshold",
+    temperature: "Steam Level",
+  };
+
+  return labels[key] || key;
+}
+
+function formatStateValue(value) {
+  if (value === true) return "Yes";
+  if (value === false) return "No";
+  return String(value);
+}
+
 export default function DevicePage({
   deviceId,
   uiItems,
@@ -407,8 +428,8 @@ export default function DevicePage({
                         color: "#363945",
                       }}
                     >
-                      <strong>{key}</strong>
-                      <span>{String(value)}</span>
+                      <strong>{formatStateLabel(key)}</strong>
+                    <span>{formatStateValue(value)}</span>
                     </div>
                   ))
                 ) : (

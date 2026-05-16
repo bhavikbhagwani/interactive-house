@@ -32,6 +32,8 @@ class SmartHomeViewModel(private val repo: SmartHomeRepository) : ViewModel() {
 
     private var updatesJob: Job? = null
 
+    private var allUpdatesJob: Job? = null
+
     fun login(email: String, password: String) {
         viewModelScope.launch {
             _state.update {
@@ -61,7 +63,7 @@ class SmartHomeViewModel(private val repo: SmartHomeRepository) : ViewModel() {
                         userRole = role
                     )
                 }
-
+                startAllDeviceStateUpdates()
                 loadDevices()
             } else {
                 _state.update {
@@ -183,6 +185,25 @@ class SmartHomeViewModel(private val repo: SmartHomeRepository) : ViewModel() {
             }.onFailure { e ->
                 _state.update {
                     it.copy(error = e.message ?: "Failed to send action")
+                }
+            }
+        }
+    }
+
+    private fun startAllDeviceStateUpdates() {
+        if (allUpdatesJob != null) return
+
+        allUpdatesJob = viewModelScope.launch {
+            repo.allStateUpdates().collect { (deviceId, newState) ->
+                _state.update { current ->
+                    current.copy(
+                        deviceStates = current.deviceStates + (deviceId to newState),
+                        latestState = if (current.selectedDevice?.deviceId == deviceId) {
+                            newState
+                        } else {
+                            current.latestState
+                        }
+                    )
                 }
             }
         }

@@ -327,15 +327,15 @@ def run_automation_from_device_state(device_id, state):
     if not isinstance(state, dict):
         return
 
-    if state.get("motionDetected") is True:
-        for lid in ("led-1", "led-2"):
-            if lid in devices:
-                _forward_device_action(lid, "on", "automation")
+    # if state.get("motionDetected") is True:
+    #     for lid in ("led-1", "led-2"):
+    #         if lid in devices:
+    #             _forward_device_action(lid, "on", "automation")
 
-    if state.get("motionDetected") is False:
-        for lid in ("led-1", "led-2"):
-            if lid in devices:
-                _forward_device_action(lid, "off", "automation")
+    # if state.get("motionDetected") is False:
+    #     for lid in ("led-1", "led-2"):
+    #         if lid in devices:
+                # _forward_device_action(lid, "off", "automation")
 
     if "smokeDetected" in state and "alarm-1" in devices:
         if state.get("smokeDetected") is True:
@@ -343,9 +343,11 @@ def run_automation_from_device_state(device_id, state):
         elif state.get("smokeDetected") is False:
             _forward_device_action("alarm-1", "off", "automation")
 
-    t = state.get("steamLevel", state.get("temperature"))
+    level = state.get("steamLevel", state.get("temperature"))
+    threshold = state.get("thresholdHigh", 350)
 
-    if isinstance(t, (int, float)) and t > 28.0 and "fan-1" in devices:
+    if isinstance(level, (int, float)) and level > threshold and "fan-1" in devices:
+        print(f"[Automation] Steam level {level} > {threshold}, turning fan ON")
         _forward_device_action("fan-1", "on", "automation")
 
 
@@ -479,6 +481,36 @@ def handle_voice_command_message(sock, unit_id, payload):
         return
     user_id = unit_sockets.get(sock)
     text = payload.get("text")
+    clean = text.lower().strip()
+
+    # Special case: control both lights
+    if "turn on the lights" in clean or "turn on lights" in clean:
+        for device_id in ("led-1", "led-2"):
+            dtype = _device_type_for(device_id)
+            if user_can_access_device(str(user_id), device_id, device_type=dtype, need_control=True):
+                _forward_device_action(device_id, "ON", unit_id)
+
+        safe_send_json(sock, {
+            "type": "voice_command_ok",
+            "sender_id": "server",
+            "payload": {"message": "Turning on lights"},
+        })
+        return
+
+    if "turn off the lights" in clean or "turn off lights" in clean:
+        for device_id in ("led-1", "led-2"):
+            dtype = _device_type_for(device_id)
+            if user_can_access_device(str(user_id), device_id, device_type=dtype, need_control=True):
+                _forward_device_action(device_id, "OFF", unit_id)
+
+        safe_send_json(sock, {
+            "type": "voice_command_ok",
+            "sender_id": "server",
+            "payload": {"message": "Turning off lights"},
+        })
+        return
+    
+
     intent = process_voice_command(text)
     itype = intent.get("type")
     if itype == "scene":
@@ -632,11 +664,18 @@ def _register_speech_device_aliases():
         ("led", "led-1"),
         ("led one", "led-1"),
         ("led 1", "led-1"),
-        ("light", "led-1"),
-        ("lights", "led-1"),
+        ("light one", "led-1"),
+        ("light 1", "led-1"),
+
+        ("led two", "led-2"),
+        ("led 2", "led-2"),
+        ("light two", "led-2"),
+        ("light 2", "led-2"),
+
         ("fan", "fan-1"),
         ("door", "door-1"),
     ]
+
     for spoken, canonical in pairs:
         try:
             register_device_alias(spoken, canonical)

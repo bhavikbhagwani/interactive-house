@@ -51,7 +51,7 @@ SMOKE_SENSOR_DEVICES = [
 ]
 
 TEMPERATURE_SENSOR_DEVICES = [
-    {"id": "temp-sensor-1", "name": "Temperature Sensor", "pin": "A3", "threshold_high": 20, "threshold_low": 8},
+    {"id": "temp-sensor-1", "name": "Temperature Sensor", "pin": "A3", "threshold_high": 350, "threshold_low": 8},
 ]
 
 # Alarm/Buzzer

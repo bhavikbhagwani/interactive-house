@@ -238,11 +238,11 @@ private fun SensorStateDetails(latestState: Map<String, Any>) {
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                        text = key,
+                        text = formatStateLabel(key),
                         fontWeight = FontWeight.SemiBold
                     )
 
-                    Text(text = value.toString())
+                    Text(text = formatStateValue(value))
                 }
             }
         }
@@ -431,6 +431,33 @@ private fun deviceIconRes(rawTitle: String): Int {
         "alarm" in t || "buzzer" in t -> R.drawable.siren
 
         else -> R.drawable.lightbulb
+    }
+}
+
+private fun formatStateLabel(key: String): String {
+    return when (key) {
+        "smokeLevel" -> "Smoke Level"
+        "smokeDetected" -> "Smoke Detected"
+        "threshold" -> "Threshold"
+        "steamLevel" -> "Steam Level"
+        "status" -> "Status"
+        "thresholdHigh" -> "High Threshold"
+        "thresholdLow" -> "Low Threshold"
+        "temperature" -> "Steam Level"
+        "alarmOn" -> "Alarm On"
+        "fanOn" -> "Fan On"
+        "ledOn" -> "Light On"
+        "doorState" -> "Door State"
+        "position" -> "Position"
+        else -> key
+    }
+}
+
+private fun formatStateValue(value: Any): String {
+    return when (value) {
+        true -> "Yes"
+        false -> "No"
+        else -> value.toString()
     }
 }
 

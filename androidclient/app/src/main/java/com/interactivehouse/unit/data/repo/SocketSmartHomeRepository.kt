@@ -55,6 +55,8 @@ class SocketSmartHomeRepository(
 
     private val pending = ConcurrentHashMap<String, CompletableDeferred<JSONObject>>()
 
+    private val _allStateUpdates = MutableSharedFlow<Pair<String, Map<String, Any>>>(replay = 0)
+
     private suspend fun sendAndAwait(
         msg: JSONObject,
         responseType: String,
@@ -190,6 +192,7 @@ class SocketSmartHomeRepository(
         val stateMap = jsonObjectToMap(stateObj)
         log("STATE for $deviceId => $stateMap")
         flowFor(deviceId).emit(stateMap)
+        _allStateUpdates.emit(deviceId to stateMap)
     }
 
     override suspend fun login(email: String, password: String): Boolean {
@@ -313,6 +316,10 @@ class SocketSmartHomeRepository(
 
     override fun stateUpdates(deviceId: String): Flow<Map<String, Any>> {
         return flowFor(deviceId).asSharedFlow()
+    }
+
+    override fun allStateUpdates(): Flow<Pair<String, Map<String, Any>>> {
+        return _allStateUpdates.asSharedFlow()
     }
 
     override suspend fun sendAction(deviceId: String, action: String) {
