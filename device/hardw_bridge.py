@@ -47,7 +47,7 @@ DOOR_DEVICES = [
 # ]
 
 SMOKE_SENSOR_DEVICES = [
-    {"id": "smoke-sensor-1", "name": "Smoke Sensor", "pin": "A0", "threshold": 180},
+    {"id": "smoke-sensor-1", "name": "Smoke Sensor", "pin": "A0", "threshold": 150},
 ]
 
 TEMPERATURE_SENSOR_DEVICES = [
