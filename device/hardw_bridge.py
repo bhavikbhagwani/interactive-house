@@ -47,18 +47,12 @@ DOOR_DEVICES = [
 # ]
 
 SMOKE_SENSOR_DEVICES = [
-    # Raw ADC 0–1023 on A0 (MQ-2). Trigger when level exceeds 300.
-    {"id": "smoke-sensor-1", "name": "Smoke Sensor", "pin": "A0", "threshold": 300},
+    {"id": "smoke-sensor-1", "name": "Smoke Sensor", "pin": "A0", "threshold": 180},
 ]
 
 TEMPERATURE_SENSOR_DEVICES = [
-    # steamLevel is °C after LM35 conversion.
-    {"id": "temp-sensor-1", "name": "Temperature Sensor", "pin": "A3", "threshold_high": 120, "threshold_low": 8},
+    {"id": "temp-sensor-1", "name": "Temperature Sensor", "pin": "A3", "threshold_high": 350, "threshold_low": 8},
 ]
-
-# Steam/temp sensor responsiveness (hardw_bridge poll loop)
-TEMP_POLL_INTERVAL_SEC = 1.0
-TEMP_REPORT_DELTA = 0.1
 
 # Alarm/Buzzer
 ALARM_DEVICES = [
@@ -146,14 +140,14 @@ class ArduinoSerial:
                 self.serial.flush()
 
                 response = ""
-                for _ in range(3):
-                    time.sleep(0.05)
+                for _ in range(5):
+                    time.sleep(0.1)
                     response = self.serial.readline().decode(errors="replace").strip()
                     if response:
                         break
 
                 print(f"[Arduino QUERY] command={command.strip()} response={response!r}")
-
+                
                 # Parse response like "VALUE:123"
                 if response.startswith("VALUE:"):
                     parts = response.split(":")
@@ -617,14 +611,10 @@ class SmokeSensorDevice(BaseDevice):
         self.polling_thread.start()
 
     def _poll_loop(self):
-        clear_margin = 15
         while self.running:
             new_level = self.arduino.read_analog(self.pin)
-            if self.smoke_detected:
-                new_detected = new_level > (self.threshold - clear_margin)
-            else:
-                new_detected = new_level > self.threshold
-
+            new_detected = new_level > self.threshold
+            
             # Only send state if changed
             if new_level != self.smoke_level or new_detected != self.smoke_detected:
                 self.smoke_level = new_level
@@ -700,15 +690,13 @@ class TemperatureSensorDevice(BaseDevice):
             else:
                 new_status = "normal"
             
-            if (
-                abs(new_temp - self.temperature) >= TEMP_REPORT_DELTA
-                or new_status != self.status
-            ):
+            # Only send state if changed significantly
+            if abs(new_temp - self.temperature) > 0.5 or new_status != self.status:
                 self.temperature = new_temp
                 self.status = new_status
                 self.send_state()
-
-            time.sleep(TEMP_POLL_INTERVAL_SEC)
+            
+            time.sleep(5)  # Poll every 5 seconds
 
 
 # ALARM DEVICE (Buzzer)
@@ -916,23 +904,11 @@ class HardwareBridge:
                     self.smoke_device.smoke_level = level
                     self.smoke_device.smoke_detected = level > self.smoke_device.threshold
                     self.smoke_device.send_state()
-
-                    if self.smoke_device.smoke_detected:
-                        if self.alarm_device:
-                            print("[Automation] Smoke detected - triggering alarm!")
-                            self.alarm_device.trigger_alarm()
-                        if self.fan_devices:
-                            print("[Automation] Smoke detected - turning on fan")
-                            for fan in self.fan_devices:
-                                if not fan.state:
-                                    fan.handle_action("ON")
-                    else:
-                        if self.alarm_device:
-                            self.alarm_device.stop_alarm()
-                        if self.fan_devices:
-                            for fan in self.fan_devices:
-                                if fan.state:
-                                    fan.handle_action("OFF")
+                    
+                    # Automation: Trigger alarm if smoke detected
+                    if self.smoke_device.smoke_detected and self.alarm_device:
+                        print("[Automation] Smoke detected - triggering alarm!")
+                        self.alarm_device.trigger_alarm()
                 except ValueError:
                     pass
 
